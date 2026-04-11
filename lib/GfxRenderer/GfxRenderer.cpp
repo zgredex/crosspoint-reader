@@ -192,7 +192,7 @@ void GfxRenderer::drawPixel(const int x, const int y, const bool state) const {
 
   // Bounds checking against runtime panel dimensions
   if (phyX < 0 || phyX >= panelWidth || phyY < 0 || phyY >= panelHeight) {
-    LOG_ERR("GFX", "!! Outside range (%d, %d) -> (%d, %d)", x, y, phyX, phyY);
+    LOG_DBG("GFX", "!! Outside range (%d, %d) -> (%d, %d)", x, y, phyX, phyY);
     return;
   }
 
@@ -1212,7 +1212,31 @@ void GfxRenderer::displayXtchPlanes(const uint8_t* plane1, const uint8_t* plane2
   const size_t colBytes = (pageHeight + 7) / 8;
   const uint16_t fbStride = panelWidthBytes;
 
-  // Pass 1: plane1 → BW RAM (LSB). bit=1 where pv>=2 (LightGrey or Black).
+  // Diagnostic: verify column stride matches framebuffer row stride.
+  // A mismatch means the column-major copy would corrupt the framebuffer.
+  if (colBytes != fbStride) {
+    LOG_ERR("GFX", "XTCH stride mismatch: colBytes=%u fbStride=%u page=%ux%u panel=%ux%u", (unsigned)colBytes,
+            (unsigned)fbStride, pageWidth, pageHeight, panelWidth, panelHeight);
+  }
+
+  // Diagnostic: count set bits per plane to detect content-correlated white-wash.
+  // p1_set = pixels where Bit1=1 (LightGrey or Black), p2_set = pixels where Bit2=1 (DarkGrey or Black).
+  // A page with very few set bits may not drive the factory LUT strongly enough if residual state
+  // from prior pages is interfering. Log these values to correlate with observed white-wash pages.
+  {
+    uint32_t setBits1 = 0, setBits2 = 0;
+    const size_t planeBytes = static_cast<size_t>(pageWidth) * colBytes;
+    for (size_t i = 0; i < planeBytes; i++) {
+      setBits1 += static_cast<uint32_t>(__builtin_popcount(plane1[i]));
+      setBits2 += static_cast<uint32_t>(__builtin_popcount(plane2[i]));
+    }
+    const uint32_t totalPx = static_cast<uint32_t>(pageWidth) * pageHeight;
+    LOG_DBG("GFX", "XTCH %ux%u p1set=%lu p2set=%lu of %lu px (colB=%u fbS=%u)", pageWidth, pageHeight, setBits1,
+            setBits2, totalPx, (unsigned)colBytes, (unsigned)fbStride);
+  }
+
+  // Pass 1: plane1 (Bit1/MSB of pixelValue) → BW RAM (0x24).
+  // XTH: pixelValue=(Bit1<<1)|Bit2. Firmware analysis: Plane1→BW RAM, Plane2→RED RAM.
   clearScreen(0x00);
   for (uint16_t c = 0; c < pageWidth; c++) {
     const uint8_t* srcCol = plane1 + static_cast<uint32_t>(c) * colBytes;
@@ -1223,7 +1247,7 @@ void GfxRenderer::displayXtchPlanes(const uint8_t* plane1, const uint8_t* plane2
   }
   copyGrayscaleLsbBuffers();
 
-  // Pass 2: plane2 → RED RAM (MSB). bit=1 where pv&1 (DarkGrey or Black).
+  // Pass 2: plane2 (Bit2/LSB of pixelValue) → RED RAM (0x26).
   clearScreen(0x00);
   for (uint16_t c = 0; c < pageWidth; c++) {
     const uint8_t* srcCol = plane2 + static_cast<uint32_t>(c) * colBytes;
@@ -1234,26 +1258,8 @@ void GfxRenderer::displayXtchPlanes(const uint8_t* plane1, const uint8_t* plane2
   }
   copyGrayscaleMsbBuffers();
 
-  displayGrayBuffer(lut_factory_fast, true);
+  displayGrayBuffer(lut_factory_quality, true);
   setRenderMode(BW);
-
-  // Re-render BW approximation into framebuffer so the controller's RED RAM reflects a coherent
-  // BW state for subsequent page turns (prevents fading/ghosting from residual gray RAM data).
-  clearScreen();
-  for (uint16_t y = 0; y < pageHeight; y++) {
-    for (uint16_t x = 0; x < pageWidth; x++) {
-      const size_t colIndex = pageWidth - 1 - x;
-      const size_t byteInCol = y / 8;
-      const size_t bitInByte = 7 - (y % 8);
-      const size_t byteOffset = colIndex * colBytes + byteInCol;
-      const uint8_t bit1 = (plane1[byteOffset] >> bitInByte) & 1;
-      const uint8_t bit2 = (plane2[byteOffset] >> bitInByte) & 1;
-      if (((bit1 << 1) | bit2) >= 1) {
-        drawPixel(x, y, true);
-      }
-    }
-  }
-  cleanupGrayscaleWithFrameBuffer();
 }
 
 void GfxRenderer::displayXtcBwPage(const uint8_t* pageBuffer, const uint16_t pageWidth, const uint16_t pageHeight) {
