@@ -1212,29 +1212,6 @@ void GfxRenderer::displayXtchPlanes(const uint8_t* plane1, const uint8_t* plane2
   const size_t colBytes = (pageHeight + 7) / 8;
   const uint16_t fbStride = panelWidthBytes;
 
-  // Diagnostic: verify column stride matches framebuffer row stride.
-  // A mismatch means the column-major copy would corrupt the framebuffer.
-  if (colBytes != fbStride) {
-    LOG_ERR("GFX", "XTCH stride mismatch: colBytes=%u fbStride=%u page=%ux%u panel=%ux%u", (unsigned)colBytes,
-            (unsigned)fbStride, pageWidth, pageHeight, panelWidth, panelHeight);
-  }
-
-  // Diagnostic: count set bits per plane to detect content-correlated white-wash.
-  // p1_set = pixels where Bit1=1 (LightGrey or Black), p2_set = pixels where Bit2=1 (DarkGrey or Black).
-  // A page with very few set bits may not drive the factory LUT strongly enough if residual state
-  // from prior pages is interfering. Log these values to correlate with observed white-wash pages.
-  {
-    uint32_t setBits1 = 0, setBits2 = 0;
-    const size_t planeBytes = static_cast<size_t>(pageWidth) * colBytes;
-    for (size_t i = 0; i < planeBytes; i++) {
-      setBits1 += static_cast<uint32_t>(__builtin_popcount(plane1[i]));
-      setBits2 += static_cast<uint32_t>(__builtin_popcount(plane2[i]));
-    }
-    const uint32_t totalPx = static_cast<uint32_t>(pageWidth) * pageHeight;
-    LOG_DBG("GFX", "XTCH %ux%u p1set=%lu p2set=%lu of %lu px (colB=%u fbS=%u)", pageWidth, pageHeight, setBits1,
-            setBits2, totalPx, (unsigned)colBytes, (unsigned)fbStride);
-  }
-
   // Pass 1: plane1 (Bit1/MSB of pixelValue) → BW RAM (0x24).
   // XTH: pixelValue=(Bit1<<1)|Bit2. Firmware analysis: Plane1→BW RAM, Plane2→RED RAM.
   clearScreen(0x00);

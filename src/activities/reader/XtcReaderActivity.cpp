@@ -187,16 +187,6 @@ void XtcReaderActivity::renderPage() {
     const uint8_t* plane1 = pageBuffer;              // Bit1 plane (MSB of pixelValue → BW RAM)
     const uint8_t* plane2 = pageBuffer + planeSize;  // Bit2 plane (LSB of pixelValue → RED RAM)
 
-    // Diagnostic: detect SD read corruption via plane checksums and sample first bytes.
-    // If the same page shows different checksums on successive reads, the SD path is at fault.
-    uint8_t xor1 = 0, xor2 = 0;
-    for (size_t i = 0; i < planeSize; i++) {
-      xor1 ^= plane1[i];
-      xor2 ^= plane2[i];
-    }
-    LOG_DBG("XTR", "p%lu XTCH %ux%u plane=%u p1XOR=%02X p2XOR=%02X clean=%u p1[0]=%02X p2[0]=%02X", currentPage + 1,
-            pageWidth, pageHeight, (unsigned)planeSize, xor1, xor2, pagesSinceClean, plane1[0], plane2[0]);
-
     // Periodic full refresh to reset DC balance from accumulated factory LUT renders.
     // HALF_REFRESH only clears ghosting but adds more white-polarity bias (net negative).
     // FULL_REFRESH drives all particles through a complete black→white cycle, genuinely
