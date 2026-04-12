@@ -436,7 +436,7 @@ bool JpegToBmpConverter::jpegFileToBmpStreamInternal(FsFile& jpegFile, Print& bm
         } else {
           // 2-bit output
           for (int x = 0; x < outWidth; x++) {
-            const uint8_t gray = adjustPixel(mcuRowBuffer[bufferY * imageInfo.m_width + x]);
+            const uint8_t gray = mcuRowBuffer[bufferY * imageInfo.m_width + x];
             uint8_t twoBit;
             if (atkinsonDitherer) {
               twoBit = atkinsonDitherer->processPixel(gray, x);
@@ -513,7 +513,7 @@ bool JpegToBmpConverter::jpegFileToBmpStreamInternal(FsFile& jpegFile, Print& bm
           } else {
             // 2-bit output
             for (int x = 0; x < outWidth; x++) {
-              const uint8_t gray = adjustPixel((rowCount[x] > 0) ? (rowAccum[x] / rowCount[x]) : 0);
+              const uint8_t gray = (rowCount[x] > 0) ? (rowAccum[x] / rowCount[x]) : 0;
               uint8_t twoBit;
               if (atkinsonDitherer) {
                 twoBit = atkinsonDitherer->processPixel(gray, x);
