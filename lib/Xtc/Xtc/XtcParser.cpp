@@ -442,6 +442,41 @@ size_t XtcParser::loadPageMsb(uint32_t pageIndex, uint8_t* buffer, size_t buffer
   return bytesRead;
 }
 
+size_t XtcParser::loadPageLsb(uint32_t pageIndex, uint8_t* buffer, size_t bufferSize) {
+  if (m_bitDepth != 2) return loadPage(pageIndex, buffer, bufferSize);
+
+  if (!m_isOpen) {
+    m_lastError = XtcError::FILE_NOT_FOUND;
+    return 0;
+  }
+  if (pageIndex >= m_header.pageCount) {
+    m_lastError = XtcError::PAGE_OUT_OF_RANGE;
+    return 0;
+  }
+
+  const PageInfo& page = m_pageTable[pageIndex];
+  const size_t planeSize = (static_cast<size_t>(page.width) * page.height + 7) / 8;
+  const uint32_t plane2Offset = page.offset + sizeof(XtgPageHeader) + static_cast<uint32_t>(planeSize);
+  if (!m_file.seek(plane2Offset)) {
+    m_lastError = XtcError::READ_ERROR;
+    return 0;
+  }
+
+  if (bufferSize < planeSize) {
+    LOG_DBG("XTC", "Buffer too small for LSB plane: need %u, have %u", planeSize, bufferSize);
+    m_lastError = XtcError::MEMORY_ERROR;
+    return 0;
+  }
+
+  size_t bytesRead = m_file.read(buffer, planeSize);
+  if (bytesRead != planeSize) {
+    m_lastError = XtcError::READ_ERROR;
+    return 0;
+  }
+  m_lastError = XtcError::OK;
+  return bytesRead;
+}
+
 XtcError XtcParser::loadPageStreaming(uint32_t pageIndex,
                                       std::function<void(const uint8_t* data, size_t size, size_t offset)> callback,
                                       size_t chunkSize) {

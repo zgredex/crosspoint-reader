@@ -707,7 +707,9 @@ void GfxRenderer::drawBitmap(const Bitmap& bitmap, const int x, const int y, con
 
       const uint8_t val = outputRow[bmpX / 4] >> (6 - ((bmpX * 2) % 8)) & 0x3;
 
-      if (renderMode == BW && val < 3) {
+      if (renderMode == BW && val < 2) {
+        // val 0=black, 1=darkGrey, 2=lightGrey, 3=white. Threshold at midpoint:
+        // draw only black and dark grey; light grey stays white on 1-bit display.
         drawPixel(screenX, screenY);
       } else if (renderMode == GRAYSCALE_MSB && (val == 1 || val == 2)) {
         drawPixel(screenX, screenY, false);
