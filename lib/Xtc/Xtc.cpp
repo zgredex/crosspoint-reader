@@ -332,10 +332,13 @@ bool Xtc::generateThumbBmp(int height) const {
   LOG_DBG("XTC", "Generating thumb BMP: %dx%d -> %dx%d (scale: %.3f)", pageInfo.width, pageInfo.height, thumbWidth,
           thumbHeight, scale);
 
-  // Allocate buffer for page data
+  // Allocate buffer for page data.
+  // For 2-bit pages, only plane1 (MSB) is loaded: bit1=0 → dark, bit1=1 → light.
+  // Full 2-plane buffer (e.g. 96000 bytes for 480x800) exceeds heap limits; plane1
+  // alone (48000 bytes) is sufficient to distinguish dark vs light for 1-bit thumbnail output.
   size_t bitmapSize;
   if (bitDepth == 2) {
-    bitmapSize = ((static_cast<size_t>(pageInfo.width) * pageInfo.height + 7) / 8) * 2;
+    bitmapSize = (static_cast<size_t>(pageInfo.width) * pageInfo.height + 7) / 8;  // plane1 only
   } else {
     bitmapSize = ((pageInfo.width + 7) / 8) * pageInfo.height;
   }
@@ -345,8 +348,8 @@ bool Xtc::generateThumbBmp(int height) const {
     return false;
   }
 
-  // Load first page (cover)
-  size_t bytesRead = const_cast<xtc::XtcParser*>(parser.get())->loadPage(0, pageBuffer, bitmapSize);
+  // Load first page (cover). For 2-bit pages, only plane1 (MSB) is needed for thumbnail.
+  size_t bytesRead = const_cast<xtc::XtcParser*>(parser.get())->loadPageMsb(0, pageBuffer, bitmapSize);
   if (bytesRead == 0) {
     LOG_ERR("XTC", "Failed to load cover page for thumb");
     free(pageBuffer);
@@ -379,10 +382,7 @@ bool Xtc::generateThumbBmp(int height) const {
   // Fixed-point scale factor (16.16)
   uint32_t scaleInv_fp = static_cast<uint32_t>(65536.0f / scale);
 
-  // Pre-calculate plane info for 2-bit mode
-  const size_t planeSize = (bitDepth == 2) ? ((static_cast<size_t>(pageInfo.width) * pageInfo.height + 7) / 8) : 0;
-  const uint8_t* plane1 = (bitDepth == 2) ? pageBuffer : nullptr;
-  const uint8_t* plane2 = (bitDepth == 2) ? pageBuffer + planeSize : nullptr;
+  // Pre-calculate plane info for 2-bit mode (plane1 only — see allocation comment above)
   const size_t colBytes = (bitDepth == 2) ? ((pageInfo.height + 7) / 8) : 0;
   const size_t srcRowBytes = (bitDepth == 1) ? ((pageInfo.width + 7) / 8) : 0;
 
@@ -415,21 +415,18 @@ bool Xtc::generateThumbBmp(int height) const {
           uint8_t grayValue = 255;  // Default: white
 
           if (bitDepth == 2) {
-            // XTH 2-bit mode: pixel value 0-3
-            // Bounds check for column index
+            // XTH 2-bit mode: plane1 (MSB) only — bit1=0 → dark pixel, bit1=1 → light pixel.
+            // Full pixel value needs both planes but plane2 cannot be loaded simultaneously
+            // (combined buffer exceeds heap). MSB alone gives sufficient dark/light discrimination
+            // for 1-bit thumbnail output: dark midpoint 42, light midpoint 212.
             if (srcX < pageInfo.width) {
               const size_t colIndex = pageInfo.width - 1 - srcX;
               const size_t byteInCol = srcY / 8;
               const size_t bitInByte = 7 - (srcY % 8);
               const size_t byteOffset = colIndex * colBytes + byteInCol;
-              // Bounds check for buffer access
-              if (byteOffset < planeSize) {
-                const uint8_t bit1 = (plane1[byteOffset] >> bitInByte) & 1;
-                const uint8_t bit2 = (plane2[byteOffset] >> bitInByte) & 1;
-                const uint8_t pixelValue = (bit1 << 1) | bit2;
-                // Convert 2-bit (0-3) to grayscale: 0=black, 3=white
-                // pixelValue: 0=white, 1=light gray, 2=dark gray, 3=black (XTC polarity)
-                grayValue = (3 - pixelValue) * 85;  // 0->255, 1->170, 2->85, 3->0
+              if (byteOffset < bitmapSize) {
+                const uint8_t bit1 = (pageBuffer[byteOffset] >> bitInByte) & 1;
+                grayValue = bit1 ? 212 : 42;
               }
             }
           } else {
