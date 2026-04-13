@@ -1219,16 +1219,6 @@ void GfxRenderer::displayXtchPlanes(const uint8_t* plane1, const uint8_t* plane2
   const size_t colBytes = (pageHeight + 7) / 8;
   const uint16_t fbStride = panelWidthBytes;
 
-  // DIAGNOSTIC: Count non-zero bytes in planes
-  size_t plane1NonZero = 0, plane2NonZero = 0;
-  size_t planeSize = static_cast<size_t>(pageWidth) * colBytes;
-  for (size_t i = 0; i < planeSize; i++) {
-    if (plane1[i]) plane1NonZero++;
-    if (plane2[i]) plane2NonZero++;
-  }
-  LOG_DBG("XTC", "Planes: plane1=%zu/%zu (%.1f%%), plane2=%zu/%zu (%.1f%%)", plane1NonZero, planeSize,
-          100.0 * plane1NonZero / planeSize, plane2NonZero, planeSize, 100.0 * plane2NonZero / planeSize);
-
   // Pass 1: plane1 (Bit1/MSB of pixelValue) → BW RAM (0x24).
   // XTH: pixelValue=(Bit1<<1)|Bit2. Firmware analysis: Plane1→BW RAM, Plane2→RED RAM.
   clearScreen(0x00);
