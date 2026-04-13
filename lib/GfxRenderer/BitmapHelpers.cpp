@@ -5,6 +5,9 @@
 
 #include "Bitmap.h"
 
+// LUT-aware quantization profile: false = factory (default), true = differential
+bool g_differentialQuantize = false;
+
 // Brightness/Contrast adjustments:
 constexpr bool USE_BRIGHTNESS = true;        // true: apply brightness/gamma adjustments
 constexpr int BRIGHTNESS_BOOST = 0;          // No boost — quality LUT already renders slightly lighter
@@ -52,17 +55,21 @@ int adjustPixel(int gray) {
 
   return gray;
 }
-// Simple quantization without dithering — evenly-spaced midpoint thresholds for factory LUT
+// Simple quantization without dithering.
+// Factory LUT (fast/quality): evenly-spaced thresholds — softer, linear drive.
+// Differential LUT: calibrated thresholds from upstream — narrow darkGrey band,
+//   biased toward lighter levels to compensate for more aggressive drive.
 uint8_t quantizeSimple(int gray) {
-  if (gray < 43) {
-    return 0;
-  } else if (gray < 128) {
-    return 1;
-  } else if (gray < 213) {
-    return 2;
-  } else {
+  if (g_differentialQuantize) {
+    if (gray < 45) return 0;
+    if (gray < 70) return 1;
+    if (gray < 140) return 2;
     return 3;
   }
+  if (gray < 43) return 0;
+  if (gray < 128) return 1;
+  if (gray < 213) return 2;
+  return 3;
 }
 
 // Hash-based noise dithering - survives downsampling without moiré artifacts

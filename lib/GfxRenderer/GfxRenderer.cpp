@@ -6,6 +6,7 @@
 #include <Logging.h>
 #include <Utf8.h>
 
+#include "BitmapHelpers.h"
 #include "FontCacheManager.h"
 
 const uint8_t* GfxRenderer::getGlyphBitmap(const EpdFontData* fontData, const EpdGlyph* glyph) const {
@@ -1195,6 +1196,8 @@ void GfxRenderer::renderGrayscale(GrayscaleMode mode, void (*renderFn)(const Gfx
                              : (mode == GrayscaleMode::FactoryQuality) ? lut_factory_quality
                                                                        : nullptr;
 
+  g_differentialQuantize = (mode == GrayscaleMode::Differential);
+
   clearScreen(0x00);
   setRenderMode(lsbMode);
   renderFn(*this, ctx);
@@ -1205,6 +1208,8 @@ void GfxRenderer::renderGrayscale(GrayscaleMode mode, void (*renderFn)(const Gfx
   renderFn(*this, ctx);
   copyGrayscaleMsbBuffers();
 
+  g_differentialQuantize = false;
+
   displayGrayBuffer(lut, factoryMode);
   setRenderMode(BW);
 }
@@ -1213,6 +1218,16 @@ void GfxRenderer::displayXtchPlanes(const uint8_t* plane1, const uint8_t* plane2
                                     const uint16_t pageHeight) {
   const size_t colBytes = (pageHeight + 7) / 8;
   const uint16_t fbStride = panelWidthBytes;
+
+  // DIAGNOSTIC: Count non-zero bytes in planes
+  size_t plane1NonZero = 0, plane2NonZero = 0;
+  size_t planeSize = static_cast<size_t>(pageWidth) * colBytes;
+  for (size_t i = 0; i < planeSize; i++) {
+    if (plane1[i]) plane1NonZero++;
+    if (plane2[i]) plane2NonZero++;
+  }
+  LOG_DBG("XTC", "Planes: plane1=%zu/%zu (%.1f%%), plane2=%zu/%zu (%.1f%%)", plane1NonZero, planeSize,
+          100.0 * plane1NonZero / planeSize, plane2NonZero, planeSize, 100.0 * plane2NonZero / planeSize);
 
   // Pass 1: plane1 (Bit1/MSB of pixelValue) → BW RAM (0x24).
   // XTH: pixelValue=(Bit1<<1)|Bit2. Firmware analysis: Plane1→BW RAM, Plane2→RED RAM.
