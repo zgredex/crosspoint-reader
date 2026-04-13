@@ -1219,8 +1219,7 @@ void GfxRenderer::displayXtchPlanes(const uint8_t* plane1, const uint8_t* plane2
   const size_t colBytes = (pageHeight + 7) / 8;
   const uint16_t fbStride = panelWidthBytes;
 
-  // Pass 1: plane1 (Bit1/MSB of pixelValue) → BW RAM (0x24).
-  // XTH: pixelValue=(Bit1<<1)|Bit2. Firmware analysis: Plane1→BW RAM, Plane2→RED RAM.
+  // Pass 1: plane1 (MSB) → BW RAM via copyGrayscaleLsbBuffers.
   clearScreen(0x00);
   for (uint16_t c = 0; c < pageWidth; c++) {
     const uint8_t* srcCol = plane1 + static_cast<uint32_t>(c) * colBytes;
@@ -1231,7 +1230,7 @@ void GfxRenderer::displayXtchPlanes(const uint8_t* plane1, const uint8_t* plane2
   }
   copyGrayscaleLsbBuffers();
 
-  // Pass 2: plane2 (Bit2/LSB of pixelValue) → RED RAM (0x26).
+  // Pass 2: plane2 (LSB) → RED RAM via copyGrayscaleMsbBuffers.
   clearScreen(0x00);
   for (uint16_t c = 0; c < pageWidth; c++) {
     const uint8_t* srcCol = plane2 + static_cast<uint32_t>(c) * colBytes;
