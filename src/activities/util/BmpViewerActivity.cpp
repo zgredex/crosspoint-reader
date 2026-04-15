@@ -52,6 +52,7 @@ void BmpViewerActivity::onEnter() {
       const auto labels = mappedInput.mapLabels(tr(STR_BACK), "", "", "");
       GUI.fillPopupProgress(renderer, popupRect, 50);
 
+      renderer.displayBuffer(HalDisplay::FULL_REFRESH);
       renderer.clearScreen();
       renderer.drawBitmap(bitmap, x, y, pageWidth, pageHeight, 0, 0);
       GUI.drawButtonHints(renderer, labels.btn1, labels.btn2, labels.btn3, labels.btn4);
