@@ -288,16 +288,64 @@ bool Xtc::generateCoverBmp() const {
   const uint32_t rowSize = ((pageInfo.width + 31) / 32) * 4;
   const size_t srcRowSize = (pageInfo.width + 7) / 8;
 
-  for (uint16_t y = 0; y < pageInfo.height; y++) {
-    coverBmp.write(pageBuffer + y * srcRowSize, srcRowSize);
-    uint8_t padding[4] = {0, 0, 0, 0};
-    const size_t paddingSize = rowSize - srcRowSize;
-    if (paddingSize > 0) {
-      coverBmp.write(padding, paddingSize);
+  // Write bitmap data
+  // BMP requires 4-byte row alignment
+  const size_t dstRowSize = (pageInfo.width + 7) / 8;
+
+  if (bitDepth == 2) {
+    const size_t planeSize = (static_cast<size_t>(pageInfo.width) * pageInfo.height + 7) / 8;
+    const uint8_t* plane1 = pageBuffer;
+    const uint8_t* plane2 = pageBuffer + planeSize;
+    const size_t colBytes = (pageInfo.height + 7) / 8;
+
+    uint8_t* rowBuffer = static_cast<uint8_t*>(malloc(dstRowSize));
+    if (!rowBuffer) {
+      free(pageBuffer);
+      return false;
+    }
+
+    for (uint16_t y = 0; y < pageInfo.height; y++) {
+      memset(rowBuffer, 0xFF, dstRowSize);
+
+      for (uint16_t x = 0; x < pageInfo.width; x++) {
+        const size_t colIndex = pageInfo.width - 1 - x;
+        const size_t byteInCol = y / 8;
+        const size_t bitInByte = 7 - (y % 8);
+
+        const size_t byteOffset = colIndex * colBytes + byteInCol;
+        const uint8_t bit1 = (plane1[byteOffset] >> bitInByte) & 1;
+        const uint8_t bit2 = (plane2[byteOffset] >> bitInByte) & 1;
+        const uint8_t pixelValue = (bit1 << 1) | bit2;
+
+        if (pixelValue >= 1) {
+          const size_t dstByte = x / 8;
+          const size_t dstBit = 7 - (x % 8);
+          rowBuffer[dstByte] &= ~(1 << dstBit);
+        }
+      }
+
+      coverBmp.write(rowBuffer, dstRowSize);
+
+      uint8_t padding[4] = {0, 0, 0, 0};
+      size_t paddingSize = rowSize - dstRowSize;
+      if (paddingSize > 0) {
+        coverBmp.write(padding, paddingSize);
+      }
+    }
+
+    free(rowBuffer);
+  } else {
+    for (uint16_t y = 0; y < pageInfo.height; y++) {
+      coverBmp.write(pageBuffer + y * srcRowSize, srcRowSize);
+
+      uint8_t padding[4] = {0, 0, 0, 0};
+      size_t paddingSize = rowSize - srcRowSize;
+      if (paddingSize > 0) {
+        coverBmp.write(padding, paddingSize);
+      }
     }
   }
 
-  coverBmp.close();
   free(pageBuffer);
 
   LOG_DBG("XTC", "Generated cover BMP: %s", getCoverBmpPath().c_str());
@@ -358,9 +406,7 @@ bool Xtc::generateThumbBmp(int height) const {
             size_t bytesRead = src.read(buffer, sizeof(buffer));
             dst.write(buffer, bytesRead);
           }
-          dst.close();
         }
-        src.close();
       }
       LOG_DBG("XTC", "Copied cover to thumb (no scaling needed)");
       return Storage.exists(getThumbBmpPath(height).c_str());
@@ -551,7 +597,6 @@ bool Xtc::generateThumbBmp(int height) const {
   uint8_t* rowBuffer = static_cast<uint8_t*>(malloc(rowSize));
   if (!rowBuffer) {
     free(pageBuffer);
-    thumbBmp.close();
     return false;
   }
 
@@ -605,7 +650,6 @@ bool Xtc::generateThumbBmp(int height) const {
   }
 
   free(rowBuffer);
-  thumbBmp.close();
   free(pageBuffer);
   LOG_DBG("XTC", "Generated 1-bit thumb BMP (%dx%d): %s", thumbWidth, thumbHeight, getThumbBmpPath(height).c_str());
   return true;
