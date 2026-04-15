@@ -100,7 +100,7 @@ struct DirectPixelWriter {
     bool state;
     switch (mode) {
       case GfxRenderer::BW:
-        draw = (pixelValue < 3);
+        draw = (pixelValue < 2);
         state = true;
         break;
       case GfxRenderer::GRAYSCALE_MSB:
