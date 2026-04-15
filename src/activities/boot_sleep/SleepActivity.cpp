@@ -19,7 +19,8 @@
 void SleepActivity::onEnter() {
   Activity::onEnter();
 
-  // Show popup with reader orientation only when going to sleep from reader
+  renderer.displayBuffer(HalDisplay::FULL_REFRESH);
+
   if (APP_STATE.lastSleepFromReader) {
     ReaderUtils::applyOrientation(renderer, SETTINGS.orientation);
     GUI.drawPopup(renderer, tr(STR_ENTERING_SLEEP));

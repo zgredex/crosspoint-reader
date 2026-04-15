@@ -755,10 +755,10 @@ void EpubReaderActivity::renderContents(std::unique_ptr<Page> page, const int or
 
     const auto tGrayStart = millis();
     const auto grayMode =
-        useFactoryGray ? GfxRenderer::GrayscaleMode::FactoryFast : GfxRenderer::GrayscaleMode::Differential;
+        useFactoryGray ? GfxRenderer::GrayscaleMode::FactoryQuality : GfxRenderer::GrayscaleMode::Differential;
     renderer.renderGrayscale(grayMode, grayFn, &grayCtx);
     const auto tGrayEnd = millis();
-    fcm->logStats(useFactoryGray ? "gray_factory" : "gray");
+    fcm->logStats(useFactoryGray ? "gray_factory_quality" : "gray");
 
     renderer.restoreBwBuffer();
     if (useFactoryGray) {
