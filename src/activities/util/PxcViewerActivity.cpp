@@ -55,8 +55,6 @@ void PxcViewerActivity::onEnter() {
   const uint32_t dataOffset = file.position();
   GUI.fillPopupProgress(renderer, popupRect, 50);
 
-  renderer.displayBuffer(HalDisplay::FULL_REFRESH);
-
   struct PxcCtx {
     FsFile* file;
     uint32_t dataOffset;
