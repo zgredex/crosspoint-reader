@@ -74,6 +74,11 @@ void BmpViewerActivity::onEnter() {
               GUI.drawButtonHints(const_cast<GfxRenderer&>(r), c->labels.btn1, c->labels.btn2, c->labels.btn3,
                                   c->labels.btn4);
             },
+            &grayCtx,
+            [](const GfxRenderer& r, const void* raw) {
+              const auto* c = static_cast<const BmpGrayCtx*>(raw);
+              r.drawCenteredText(UI_10_FONT_ID, c->maxHeight / 2, tr(STR_LOADING_POPUP));
+            },
             &grayCtx);
         renderer.restoreBwBuffer();
       } else {
@@ -103,7 +108,7 @@ void BmpViewerActivity::onEnter() {
 void BmpViewerActivity::onExit() {
   Activity::onExit();
   renderer.clearScreen();
-  renderer.displayBuffer(HalDisplay::FULL_REFRESH);
+  renderer.displayBuffer(HalDisplay::HALF_REFRESH);
 }
 
 void BmpViewerActivity::loop() {

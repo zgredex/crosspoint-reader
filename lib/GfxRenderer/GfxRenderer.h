@@ -168,7 +168,11 @@ class GfxRenderer {
   // handles pre-flash (FactoryFast only), clearScreen, setRenderMode, buffer copies,
   // displayGrayBuffer, and resets renderMode to BW on completion.
   // storeBwBuffer / restoreBwBuffer remain the caller's responsibility.
-  void renderGrayscale(GrayscaleMode mode, void (*renderFn)(const GfxRenderer&, const void*), const void* ctx);
+  // preFlashOverlayFn (optional): called after clearScreen() but before the pre-flash displayBuffer(),
+  // allowing callers to draw a loading indicator that appears during the pre-flash without an extra refresh.
+  void renderGrayscale(GrayscaleMode mode, void (*renderFn)(const GfxRenderer&, const void*), const void* ctx,
+                       void (*preFlashOverlayFn)(const GfxRenderer&, const void*) = nullptr,
+                       const void* preFlashCtx = nullptr);
 
   // Direct 2-bit XTCH plane blit using factory LUT. Caller supplies the two decoded bit planes
   // (plane1 = BW RAM / LSB, plane2 = RED RAM / MSB) in column-major order matching XTCH encoding.

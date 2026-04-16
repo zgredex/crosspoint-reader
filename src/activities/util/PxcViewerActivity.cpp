@@ -89,6 +89,11 @@ void PxcViewerActivity::onEnter() {
         GUI.drawButtonHints(const_cast<GfxRenderer&>(r), c->labels.btn1, c->labels.btn2, c->labels.btn3,
                             c->labels.btn4);
       },
+      &ctx,
+      [](const GfxRenderer& r, const void* raw) {
+        const auto* c = static_cast<const PxcCtx*>(raw);
+        r.drawCenteredText(UI_10_FONT_ID, c->height / 2, tr(STR_LOADING_POPUP));
+      },
       &ctx);
 
   file.close();
@@ -102,7 +107,7 @@ void PxcViewerActivity::onEnter() {
 void PxcViewerActivity::onExit() {
   Activity::onExit();
   renderer.clearScreen();
-  renderer.displayBuffer(HalDisplay::FULL_REFRESH);
+  renderer.displayBuffer(HalDisplay::HALF_REFRESH);
 }
 
 void PxcViewerActivity::loop() {

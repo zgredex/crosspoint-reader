@@ -1165,7 +1165,8 @@ void GfxRenderer::displayGrayBuffer(const unsigned char* lut, bool factoryMode) 
 }
 
 void GfxRenderer::renderGrayscale(GrayscaleMode mode, void (*renderFn)(const GfxRenderer&, const void*),
-                                  const void* ctx) {
+                                  const void* ctx, void (*preFlashOverlayFn)(const GfxRenderer&, const void*),
+                                  const void* preFlashCtx) {
   if (mode == GrayscaleMode::FactoryFast || mode == GrayscaleMode::FactoryQuality) {
     // Pre-flash to white so the factory LUT can drive particles reliably from any prior state.
     // Without this, particles stranded at intermediate grays may not complete their transition:
@@ -1177,6 +1178,7 @@ void GfxRenderer::renderGrayscale(GrayscaleMode mode, void (*renderFn)(const Gfx
     // believes are already white may physically be at gray or chapter-menu positions and won't be
     // driven to white, corrupting the subsequent gray render.
     clearScreen();
+    if (preFlashOverlayFn) preFlashOverlayFn(*this, preFlashCtx);
     displayBuffer(HalDisplay::HALF_REFRESH);
   }
 
