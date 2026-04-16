@@ -49,6 +49,7 @@ class GfxRenderer {
   Orientation orientation;
   bool fadingFix;
   uint8_t* frameBuffer = nullptr;
+  uint8_t* secondaryFrameBuffer = nullptr;  // MSB plane buffer for single-pass grayscale decode
   uint16_t panelWidth = HalDisplay::DISPLAY_WIDTH;
   uint16_t panelHeight = HalDisplay::DISPLAY_HEIGHT;
   uint16_t panelWidthBytes = HalDisplay::DISPLAY_WIDTH_BYTES;
@@ -68,6 +69,7 @@ class GfxRenderer {
   void drawPixelDither(int x, int y) const;
   template <Color color>
   void fillArc(int maxRadius, int cx, int cy, int xDir, int yDir) const;
+  void drawPixelToBuffer(uint8_t* buf, int x, int y) const;
 
  public:
   explicit GfxRenderer(HalDisplay& halDisplay)
@@ -173,6 +175,12 @@ class GfxRenderer {
   void renderGrayscale(GrayscaleMode mode, void (*renderFn)(const GfxRenderer&, const void*), const void* ctx,
                        void (*preFlashOverlayFn)(const GfxRenderer&, const void*) = nullptr,
                        const void* preFlashCtx = nullptr);
+  // Single-pass variant: calls renderFn once in GRAY2_LSB mode while simultaneously writing
+  // the MSB plane to a secondary buffer. Cuts SD card reads from 2 to 1 for file-backed renders.
+  // Falls back to two-pass on secondary buffer allocation failure.
+  void renderGrayscaleSinglePass(GrayscaleMode mode, void (*renderFn)(const GfxRenderer&, const void*), const void* ctx,
+                                 void (*preFlashOverlayFn)(const GfxRenderer&, const void*) = nullptr,
+                                 const void* preFlashCtx = nullptr);
 
   // Direct 2-bit XTCH plane blit using factory LUT. Caller supplies the two decoded bit planes
   // (plane1 = BW RAM / LSB, plane2 = RED RAM / MSB) in column-major order matching XTCH encoding.
@@ -188,6 +196,7 @@ class GfxRenderer {
 
   // Low level functions
   uint8_t* getFrameBuffer() const;
+  uint8_t* getSecondaryFrameBuffer() const { return secondaryFrameBuffer; }
   size_t getBufferSize() const;
   uint16_t getDisplayWidth() const { return panelWidth; }
   uint16_t getDisplayHeight() const { return panelHeight; }

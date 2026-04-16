@@ -60,7 +60,7 @@ void PxcViewerActivity::onEnter() {
   const auto labels = mappedInput.mapLabels(tr(STR_BACK), "", "", "");
   PxcCtx ctx{&file, dataOffset, pxcWidth, pxcHeight, labels};
 
-  renderer.renderGrayscale(
+  renderer.renderGrayscaleSinglePass(
       GfxRenderer::GrayscaleMode::FactoryQuality,
       [](const GfxRenderer& r, const void* raw) {
         const auto* c = static_cast<const PxcCtx*>(raw);
@@ -81,7 +81,7 @@ void PxcViewerActivity::onEnter() {
           pw.beginRow(row);
           for (int col = 0; col < c->width; col++) {
             const uint8_t pv = (rowBuf[col >> 2] >> (6 - (col & 3) * 2)) & 0x03;
-            pw.writePixel(col, pv);
+            pw.writePixel(pv);
           }
         }
         free(rowBuf);
