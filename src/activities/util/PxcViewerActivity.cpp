@@ -25,7 +25,7 @@ void PxcViewerActivity::onEnter() {
     renderer.drawCenteredText(UI_10_FONT_ID, screenHeight / 2, "Could not open file");
     const auto labels = mappedInput.mapLabels(tr(STR_BACK), "", "", "");
     GUI.drawButtonHints(renderer, labels.btn1, labels.btn2, labels.btn3, labels.btn4);
-    renderer.displayBuffer(HalDisplay::HALF_REFRESH);
+    renderer.displayBuffer(HalDisplay::FULL_REFRESH);
     return;
   }
 
@@ -37,7 +37,7 @@ void PxcViewerActivity::onEnter() {
     renderer.drawCenteredText(UI_10_FONT_ID, screenHeight / 2, "Invalid PXC file");
     const auto labels = mappedInput.mapLabels(tr(STR_BACK), "", "", "");
     GUI.drawButtonHints(renderer, labels.btn1, labels.btn2, labels.btn3, labels.btn4);
-    renderer.displayBuffer(HalDisplay::HALF_REFRESH);
+    renderer.displayBuffer(HalDisplay::FULL_REFRESH);
     return;
   }
 
@@ -48,7 +48,7 @@ void PxcViewerActivity::onEnter() {
     renderer.drawCenteredText(UI_10_FONT_ID, screenHeight / 2, "PXC size mismatch");
     const auto labels = mappedInput.mapLabels(tr(STR_BACK), "", "", "");
     GUI.drawButtonHints(renderer, labels.btn1, labels.btn2, labels.btn3, labels.btn4);
-    renderer.displayBuffer(HalDisplay::HALF_REFRESH);
+    renderer.displayBuffer(HalDisplay::FULL_REFRESH);
     return;
   }
 
@@ -106,7 +106,7 @@ void PxcViewerActivity::onEnter() {
 void PxcViewerActivity::onExit() {
   Activity::onExit();
   renderer.clearScreen();
-  renderer.displayBuffer(HalDisplay::HALF_REFRESH);
+  renderer.displayBuffer(HalDisplay::FULL_REFRESH);
 }
 
 void PxcViewerActivity::loop() {
