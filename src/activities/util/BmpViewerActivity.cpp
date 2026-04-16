@@ -75,11 +75,19 @@ void BmpViewerActivity::onEnter() {
                                   c->labels.btn4);
             },
             &grayCtx,
-            [](const GfxRenderer& r, const void* raw) {
-              const auto* c = static_cast<const BmpGrayCtx*>(raw);
-              r.drawCenteredText(UI_10_FONT_ID, c->maxHeight / 2, tr(STR_LOADING_POPUP));
+            [](const GfxRenderer& r, const void*) {
+              constexpr int margin = 15;
+              const char* msg = tr(STR_LOADING_POPUP);
+              const int y = static_cast<int>(r.getScreenHeight() * 0.075f);
+              const int textWidth = r.getTextWidth(UI_12_FONT_ID, msg, EpdFontFamily::BOLD);
+              const int w = textWidth + margin * 2;
+              const int h = r.getLineHeight(UI_12_FONT_ID) + margin * 2;
+              const int x = (r.getScreenWidth() - w) / 2;
+              r.fillRect(x - 2, y - 2, w + 4, h + 4, true);
+              r.fillRect(x, y, w, h, false);
+              r.drawText(UI_12_FONT_ID, x + margin, y + margin - 2, msg, true, EpdFontFamily::BOLD);
             },
-            &grayCtx);
+            nullptr);
         renderer.restoreBwBuffer();
       } else {
         renderer.displayBuffer(HalDisplay::FULL_REFRESH);

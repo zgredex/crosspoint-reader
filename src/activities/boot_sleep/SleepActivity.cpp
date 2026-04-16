@@ -232,7 +232,16 @@ void SleepActivity::renderPxcSleepScreen(const std::string& path) const {
         },
         &ctx,
         [](const GfxRenderer& r, const void*) {
-          r.drawCenteredText(UI_10_FONT_ID, r.getScreenHeight() / 2, tr(STR_ENTERING_SLEEP));
+          constexpr int margin = 15;
+          const char* msg = tr(STR_ENTERING_SLEEP);
+          const int y = static_cast<int>(r.getScreenHeight() * 0.075f);
+          const int textWidth = r.getTextWidth(UI_12_FONT_ID, msg, EpdFontFamily::BOLD);
+          const int w = textWidth + margin * 2;
+          const int h = r.getLineHeight(UI_12_FONT_ID) + margin * 2;
+          const int x = (r.getScreenWidth() - w) / 2;
+          r.fillRect(x - 2, y - 2, w + 4, h + 4, true);
+          r.fillRect(x, y, w, h, false);
+          r.drawText(UI_12_FONT_ID, x + margin, y + margin - 2, msg, true, EpdFontFamily::BOLD);
         },
         nullptr);
   } else {
@@ -334,7 +343,16 @@ void SleepActivity::renderBitmapSleepScreen(const Bitmap& bitmap) const {
         },
         &grayCtx,
         [](const GfxRenderer& r, const void*) {
-          r.drawCenteredText(UI_10_FONT_ID, r.getScreenHeight() / 2, tr(STR_ENTERING_SLEEP));
+          constexpr int margin = 15;
+          const char* msg = tr(STR_ENTERING_SLEEP);
+          const int y = static_cast<int>(r.getScreenHeight() * 0.075f);
+          const int textWidth = r.getTextWidth(UI_12_FONT_ID, msg, EpdFontFamily::BOLD);
+          const int w = textWidth + margin * 2;
+          const int h = r.getLineHeight(UI_12_FONT_ID) + margin * 2;
+          const int x = (r.getScreenWidth() - w) / 2;
+          r.fillRect(x - 2, y - 2, w + 4, h + 4, true);
+          r.fillRect(x, y, w, h, false);
+          r.drawText(UI_12_FONT_ID, x + margin, y + margin - 2, msg, true, EpdFontFamily::BOLD);
         },
         nullptr);
   } else {
