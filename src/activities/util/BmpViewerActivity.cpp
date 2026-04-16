@@ -19,8 +19,6 @@ void BmpViewerActivity::onEnter() {
 
   const auto pageWidth = renderer.getScreenWidth();
   const auto pageHeight = renderer.getScreenHeight();
-  Rect popupRect = GUI.drawPopup(renderer, tr(STR_LOADING_POPUP));
-  GUI.fillPopupProgress(renderer, popupRect, 20);  // Initial 20% progress
   // 1. Open the file
   if (Storage.openFileForRead("BMP", filePath, file)) {
     Bitmap bitmap(file, true);
@@ -48,9 +46,7 @@ void BmpViewerActivity::onEnter() {
         y = (pageHeight - bitmap.getHeight()) / 2;
       }
 
-      // 4. Prepare Rendering
       const auto labels = mappedInput.mapLabels(tr(STR_BACK), "", "", "");
-      GUI.fillPopupProgress(renderer, popupRect, 50);
 
       renderer.clearScreen();
       renderer.drawBitmap(bitmap, x, y, pageWidth, pageHeight, 0, 0);

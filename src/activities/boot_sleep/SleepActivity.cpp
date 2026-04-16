@@ -21,10 +21,7 @@ void SleepActivity::onEnter() {
 
   if (APP_STATE.lastSleepFromReader) {
     ReaderUtils::applyOrientation(renderer, SETTINGS.orientation);
-    GUI.drawPopup(renderer, tr(STR_ENTERING_SLEEP));
     renderer.setOrientation(GfxRenderer::Orientation::Portrait);
-  } else {
-    GUI.drawPopup(renderer, tr(STR_ENTERING_SLEEP));
   }
 
   switch (SETTINGS.sleepScreen) {

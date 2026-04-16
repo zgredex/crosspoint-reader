@@ -16,9 +16,6 @@ void PxcViewerActivity::onEnter() {
 
   const int screenWidth = renderer.getScreenWidth();
   const int screenHeight = renderer.getScreenHeight();
-  Rect popupRect = GUI.drawPopup(renderer, tr(STR_LOADING_POPUP));
-  GUI.fillPopupProgress(renderer, popupRect, 20);
-
   FsFile file;
   if (!Storage.openFileForRead("PXC", filePath, file)) {
     renderer.clearScreen();
@@ -53,7 +50,6 @@ void PxcViewerActivity::onEnter() {
   }
 
   const uint32_t dataOffset = file.position();
-  GUI.fillPopupProgress(renderer, popupRect, 50);
 
   struct PxcCtx {
     FsFile* file;
