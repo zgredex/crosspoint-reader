@@ -230,7 +230,11 @@ void SleepActivity::renderPxcSleepScreen(const std::string& path) const {
           }
           free(rowBuf);
         },
-        &ctx);
+        &ctx,
+        [](const GfxRenderer& r, const void*) {
+          r.drawCenteredText(UI_10_FONT_ID, r.getScreenHeight() / 2, tr(STR_ENTERING_SLEEP));
+        },
+        nullptr);
   } else {
     // BLACK_AND_WHITE / INVERTED_BLACK_AND_WHITE: threshold PXC to 1-bit
     // (pv 0=Black, 1=DarkGrey map to dark; 2=LightGrey, 3=White map to light)
@@ -328,7 +332,11 @@ void SleepActivity::renderBitmapSleepScreen(const Bitmap& bitmap) const {
           }
           r.drawBitmap(*c->bitmap, c->x, c->y, c->maxWidth, c->maxHeight, c->cropX, c->cropY);
         },
-        &grayCtx);
+        &grayCtx,
+        [](const GfxRenderer& r, const void*) {
+          r.drawCenteredText(UI_10_FONT_ID, r.getScreenHeight() / 2, tr(STR_ENTERING_SLEEP));
+        },
+        nullptr);
   } else {
     renderer.clearScreen();
     renderer.drawBitmap(bitmap, x, y, pageWidth, pageHeight, cropX, cropY);
