@@ -203,6 +203,12 @@ void GfxRenderer::drawPixel(const int x, const int y, const bool state) const {
 
   if (state) {
     frameBuffer[byteIndex] &= ~(1 << bitPosition);  // Clear bit
+    // Single-pass: erasing a pixel must also clear the MSB plane so UI white fills (e.g. button
+    // hint backgrounds drawn on top of a full-screen image) fully erase image bits from both
+    // planes. Without this, image pixels remain in RED RAM and bleed through white areas.
+    if (renderMode == GRAY2_LSB && secondaryFrameBuffer != nullptr) {
+      secondaryFrameBuffer[byteIndex] &= ~(1 << bitPosition);
+    }
   } else {
     frameBuffer[byteIndex] |= 1 << bitPosition;  // Set bit
     // Single-pass: all set-bit draws in GRAY2_LSB mode (1-bit UI elements, text, icons) are
@@ -387,7 +393,8 @@ void GfxRenderer::drawArc(const int maxRadius, const int cx, const int cy, const
   const int outerRadiusSq = outerRadius * outerRadius;
   const int innerRadiusSq = innerRadius * innerRadius;
 
-  const bool s = (renderMode == GRAY2_LSB || renderMode == GRAY2_MSB) ? !state : state;
+  // Do NOT pre-invert state for GRAY2 here: fillRect→drawLine already handles the GRAY2
+  // inversion. A pre-inversion here would double-invert (cancel out), rendering the wrong color.
   int xOuter = outerRadius;
   int xInner = innerRadius;
 
@@ -412,7 +419,7 @@ void GfxRenderer::drawArc(const int maxRadius, const int cx, const int cy, const
     const int py = cy + yDir * dy;
 
     if (width > 0) {
-      fillRect(left, py, width, 1, s);
+      fillRect(left, py, width, 1, state);
     }
   }
 };
