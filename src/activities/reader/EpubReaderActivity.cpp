@@ -728,12 +728,9 @@ void EpubReaderActivity::renderContents(std::unique_ptr<Page> page, const int or
   const bool useFactoryGray = SETTINGS.textAntiAliasing && isImagePage;
   lastPageWasFactoryGray = useFactoryGray;
   if (useFactoryGray) {
+    // Factory gray mode: skip BW display entirely — factory LUT drives pixels absolutely
     lastFactoryMarginTop = orientedMarginTop;
     lastFactoryMarginLeft = orientedMarginLeft;
-  }
-
-  if (useFactoryGray) {
-    // Factory gray mode: skip BW display entirely — factory LUT drives pixels absolutely
   } else {
     // Text-only AA or no AA: BW display with refresh cadence
     ReaderUtils::displayWithRefreshCycle(renderer, pagesUntilFullRefresh);

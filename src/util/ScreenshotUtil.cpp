@@ -198,12 +198,15 @@ bool ScreenshotUtil::saveGrayscaleBmp(const char* filename, const uint8_t* lsbPl
   memset(&hdr, 0, sizeof(hdr));
   hdr.bfType = 0x4D42u;
   hdr.bfSize = fileSize;
+  hdr.bfReserved1 = 0u;
+  hdr.bfReserved2 = 0u;
   hdr.bfOffBits = 1078u;
   hdr.biSize = 40u;
   hdr.biWidth = outWidth;
   hdr.biHeight = outHeight;  // positive = bottom-up row order
   hdr.biPlanes = 1u;
   hdr.biBitCount = 8u;
+  hdr.biCompression = 0u;  // BI_RGB (uncompressed)
   hdr.biSizeImage = imageSize;
   hdr.biXPelsPerMeter = 2835;
   hdr.biYPelsPerMeter = 2835;
