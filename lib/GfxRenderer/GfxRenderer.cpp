@@ -1049,6 +1049,11 @@ void GfxRenderer::clearScreen(const uint8_t color) const {
   display.clearScreen(color);
 }
 
+void GfxRenderer::setScreenshotHook(ScreenshotHook hook, void* ctx) {
+  screenshotHook = hook;
+  screenshotHookCtx = ctx;
+}
+
 void GfxRenderer::invertScreen() const {
   for (uint32_t i = 0; i < frameBufferSize; i++) {
     frameBuffer[i] = ~frameBuffer[i];
@@ -1059,6 +1064,12 @@ void GfxRenderer::displayBuffer(const HalDisplay::RefreshMode refreshMode) const
   auto elapsed = millis() - start_ms;
   LOG_DBG("GFX", "Time = %lu ms from clearScreen to displayBuffer", elapsed);
   display.displayBuffer(refreshMode, fadingFix);
+  displayState = DisplayState::BW;
+}
+
+void GfxRenderer::displayGrayBuffer(const unsigned char* lut, const bool factoryMode) const {
+  display.displayGrayBuffer(fadingFix, lut, factoryMode);
+  if (factoryMode) displayState = DisplayState::FactoryLut;
 }
 
 std::string GfxRenderer::truncatedText(const int fontId, const char* text, const int maxWidth,
@@ -1336,10 +1347,6 @@ void GfxRenderer::copyGrayscaleLsbBuffers() const { display.copyGrayscaleLsbBuff
 
 void GfxRenderer::copyGrayscaleMsbBuffers() const { display.copyGrayscaleMsbBuffers(frameBuffer); }
 
-void GfxRenderer::displayGrayBuffer(const unsigned char* lut, bool factoryMode) const {
-  display.displayGrayBuffer(fadingFix, lut, factoryMode);
-}
-
 void GfxRenderer::renderGrayscale(GrayscaleMode mode, void (*renderFn)(const GfxRenderer&, const void*),
                                   const void* ctx, void (*preFlashOverlayFn)(const GfxRenderer&, const void*),
                                   const void* preFlashCtx) {
@@ -1370,12 +1377,30 @@ void GfxRenderer::renderGrayscale(GrayscaleMode mode, void (*renderFn)(const Gfx
   clearScreen(0x00);
   setRenderMode(lsbMode);
   renderFn(*this, ctx);
+
+  // Save LSB plane for screenshot hook (needs both planes simultaneously).
+  uint8_t* lsbCopy = nullptr;
+  if (screenshotHook && factoryMode) {
+    lsbCopy = static_cast<uint8_t*>(malloc(frameBufferSize));
+    if (lsbCopy) memcpy(lsbCopy, frameBuffer, frameBufferSize);
+  }
   copyGrayscaleLsbBuffers();
 
   clearScreen(0x00);
   setRenderMode(msbMode);
   renderFn(*this, ctx);
   copyGrayscaleMsbBuffers();
+
+  // Fire hook: LSB = lsbCopy, MSB = frameBuffer (still holds second-pass data).
+  if (screenshotHook && factoryMode && lsbCopy) {
+    screenshotHook(lsbCopy, frameBuffer, panelWidth, panelHeight, screenshotHookCtx);
+    screenshotHook = nullptr;
+    screenshotHookCtx = nullptr;
+  }
+  if (lsbCopy) {
+    free(lsbCopy);
+    lsbCopy = nullptr;
+  }
 
   g_differentialQuantize = false;
 
@@ -1427,6 +1452,14 @@ void GfxRenderer::renderGrayscaleSinglePass(GrayscaleMode mode, void (*renderFn)
   setRenderMode(lsbMode);
   renderFn(*this, ctx);
 
+  // One-shot screenshot hook: fired while both planes are still in software, before either is
+  // pushed to the controller. frameBuffer = LSB plane, secBuf = MSB plane.
+  if (screenshotHook && factoryMode) {
+    screenshotHook(frameBuffer, secBuf, panelWidth, panelHeight, screenshotHookCtx);
+    screenshotHook = nullptr;
+    screenshotHookCtx = nullptr;
+  }
+
   // Push LSB plane (frameBuffer) → BW RAM.
   copyGrayscaleLsbBuffers();
 
@@ -1456,6 +1489,7 @@ void GfxRenderer::displayXtchPlanes(const uint8_t* plane1, const uint8_t* plane2
       dstRow[b] = srcCol[b];
     }
   }
+
   copyGrayscaleLsbBuffers();
 
   // Pass 2: plane2 (LSB) → RED RAM via copyGrayscaleMsbBuffers.
@@ -1468,6 +1502,14 @@ void GfxRenderer::displayXtchPlanes(const uint8_t* plane1, const uint8_t* plane2
     }
   }
   copyGrayscaleMsbBuffers();
+
+  // Fire hook: plane1 input IS already in framebuffer format (colBytes == fbStride for portrait
+  // pages), so pass it directly — no extra malloc needed. plane2 data is now in frameBuffer.
+  if (screenshotHook) {
+    screenshotHook(plane1, frameBuffer, panelWidth, panelHeight, screenshotHookCtx);
+    screenshotHook = nullptr;
+    screenshotHookCtx = nullptr;
+  }
 
   displayGrayBuffer(lut_factory_quality, true);
   setRenderMode(BW);

@@ -112,6 +112,86 @@ void PxcViewerActivity::onEnter() {
   renderer.cleanupGrayscaleWithFrameBuffer();
 }
 
+void PxcViewerActivity::renderGrayscaleImage() {
+  FsFile file;
+  if (!Storage.openFileForRead("PXC", filePath, file)) return;
+
+  uint16_t pxcWidth, pxcHeight;
+  if (file.read(&pxcWidth, 2) != 2 || file.read(&pxcHeight, 2) != 2) {
+    file.close();
+    return;
+  }
+
+  const int screenWidth = renderer.getScreenWidth();
+  const int screenHeight = renderer.getScreenHeight();
+  if (abs(pxcWidth - screenWidth) > 1 || abs(pxcHeight - screenHeight) > 1) {
+    file.close();
+    return;
+  }
+
+  const uint32_t dataOffset = file.position();
+  const auto labels = mappedInput.mapLabels(tr(STR_BACK), "", "", "");
+  struct PxcCtx {
+    FsFile* file;
+    uint32_t dataOffset;
+    int width, height;
+    MappedInputManager::Labels labels;
+  };
+  PxcCtx ctx{&file, dataOffset, pxcWidth, pxcHeight, labels};
+
+  renderer.renderGrayscaleSinglePass(
+      GfxRenderer::GrayscaleMode::FactoryQuality,
+      [](const GfxRenderer& r, const void* raw) {
+        const auto* c = static_cast<const PxcCtx*>(raw);
+        c->file->seek(c->dataOffset);
+
+        const int bytesPerRow = (c->width + 3) / 4;
+        uint8_t* rowBuf = static_cast<uint8_t*>(malloc(bytesPerRow));
+        if (!rowBuf) {
+          LOG_ERR("PXC", "malloc failed for rowBuf (%d bytes, %dx%d)", bytesPerRow, c->width, c->height);
+          return;
+        }
+
+        DirectPixelWriter pw;
+        pw.init(r);
+
+        for (int row = 0; row < c->height; row++) {
+          if (c->file->read(rowBuf, bytesPerRow) != bytesPerRow) break;
+          pw.beginRow(row);
+          for (int col = 0; col < c->width; col++) {
+            const uint8_t pv = (rowBuf[col >> 2] >> (6 - (col & 3) * 2)) & 0x03;
+            pw.writePixel(pv);
+          }
+        }
+        free(rowBuf);
+
+        GUI.drawButtonHints(const_cast<GfxRenderer&>(r), c->labels.btn1, c->labels.btn2, c->labels.btn3,
+                            c->labels.btn4);
+      },
+      &ctx,
+      [](const GfxRenderer& r, const void*) {
+        constexpr int margin = 15;
+        const char* msg = tr(STR_LOADING_POPUP);
+        const int y = static_cast<int>(r.getScreenHeight() * 0.075f);
+        const int textWidth = r.getTextWidth(UI_12_FONT_ID, msg, EpdFontFamily::BOLD);
+        const int w = textWidth + margin * 2;
+        const int h = r.getLineHeight(UI_12_FONT_ID) + margin * 2;
+        const int x = (r.getScreenWidth() - w) / 2;
+        r.fillRect(x - 2, y - 2, w + 4, h + 4, true);
+        r.fillRect(x, y, w, h, false);
+        r.drawText(UI_12_FONT_ID, x + margin, y + margin - 2, msg, true, EpdFontFamily::BOLD);
+      },
+      nullptr);
+
+  file.close();
+}
+
+void PxcViewerActivity::onScreenshotRequest() {
+  renderGrayscaleImage();
+  renderer.clearScreen();
+  renderer.cleanupGrayscaleWithFrameBuffer();
+}
+
 void PxcViewerActivity::onExit() {
   Activity::onExit();
   renderer.clearScreen();

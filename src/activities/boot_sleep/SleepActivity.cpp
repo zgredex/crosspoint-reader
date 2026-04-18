@@ -123,6 +123,11 @@ void SleepActivity::renderCustomSleepScreen() const {
       if (Storage.openFileForRead("SLP", filename, file)) {
         Bitmap bitmap(file, true);
         if (bitmap.parseHeaders() == BmpReaderError::Ok) {
+          if (bitmap.hasGreyscale() &&
+              SETTINGS.sleepScreenCoverFilter == CrossPointSettings::SLEEP_SCREEN_COVER_FILTER::NO_FILTER) {
+            lastGrayscalePath = filename;
+            lastGrayscaleIsPxc = false;
+          }
           renderBitmapSleepScreen(bitmap);
           return;
         }
@@ -145,6 +150,11 @@ void SleepActivity::renderCustomSleepScreen() const {
     Bitmap bitmap(file, true);
     if (bitmap.parseHeaders() == BmpReaderError::Ok) {
       LOG_DBG("SLP", "Loading: /sleep.bmp");
+      if (bitmap.hasGreyscale() &&
+          SETTINGS.sleepScreenCoverFilter == CrossPointSettings::SLEEP_SCREEN_COVER_FILTER::NO_FILTER) {
+        lastGrayscalePath = "/sleep.bmp";
+        lastGrayscaleIsPxc = false;
+      }
       renderBitmapSleepScreen(bitmap);
       return;
     }
@@ -197,6 +207,8 @@ void SleepActivity::renderPxcSleepScreen(const std::string& path) const {
   const int bytesPerRow = (pxcWidth + 3) / 4;
 
   if (filter == CrossPointSettings::SLEEP_SCREEN_COVER_FILTER::NO_FILTER) {
+    lastGrayscalePath = path;
+    lastGrayscaleIsPxc = true;
     struct PxcCtx {
       FsFile* file;
       uint32_t dataOffset;
@@ -432,6 +444,11 @@ void SleepActivity::renderCoverSleepScreen() const {
     Bitmap bitmap(file);
     if (bitmap.parseHeaders() == BmpReaderError::Ok) {
       LOG_DBG("SLP", "Rendering sleep cover: %s", coverBmpPath.c_str());
+      if (bitmap.hasGreyscale() &&
+          SETTINGS.sleepScreenCoverFilter == CrossPointSettings::SLEEP_SCREEN_COVER_FILTER::NO_FILTER) {
+        lastGrayscalePath = coverBmpPath;
+        lastGrayscaleIsPxc = false;
+      }
       renderBitmapSleepScreen(bitmap);
       return;
     }
@@ -443,4 +460,22 @@ void SleepActivity::renderCoverSleepScreen() const {
 void SleepActivity::renderBlankSleepScreen() const {
   renderer.clearScreen();
   renderer.displayBuffer(HalDisplay::FULL_REFRESH);
+}
+
+void SleepActivity::onScreenshotRequest() {
+  if (lastGrayscalePath.empty()) return;
+  if (lastGrayscaleIsPxc) {
+    renderPxcSleepScreen(lastGrayscalePath);
+  } else {
+    FsFile file;
+    if (Storage.openFileForRead("SLP", lastGrayscalePath.c_str(), file)) {
+      Bitmap bitmap(file, true);
+      if (bitmap.parseHeaders() == BmpReaderError::Ok) {
+        renderBitmapSleepScreen(bitmap);
+      }
+      file.close();
+    }
+  }
+  renderer.clearScreen();
+  renderer.cleanupGrayscaleWithFrameBuffer();
 }

@@ -211,6 +211,8 @@ void XtcReaderActivity::renderPage() {
   }
 }
 
+void XtcReaderActivity::onScreenshotRequest() { renderPage(); }
+
 void XtcReaderActivity::saveProgress() const {
   FsFile f;
   if (Storage.openFileForWrite("XTR", xtc->getCachePath() + "/progress.bin", f)) {

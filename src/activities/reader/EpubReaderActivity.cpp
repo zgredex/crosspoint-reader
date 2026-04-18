@@ -726,6 +726,11 @@ void EpubReaderActivity::renderContents(std::unique_ptr<Page> page, const int or
 
   const bool isImagePage = page->hasImages();
   const bool useFactoryGray = SETTINGS.textAntiAliasing && isImagePage;
+  lastPageWasFactoryGray = useFactoryGray;
+  if (useFactoryGray) {
+    lastFactoryMarginTop = orientedMarginTop;
+    lastFactoryMarginLeft = orientedMarginLeft;
+  }
 
   if (useFactoryGray) {
     // Factory gray mode: skip BW display entirely — factory LUT drives pixels absolutely
@@ -785,6 +790,29 @@ void EpubReaderActivity::renderContents(std::unique_ptr<Page> page, const int or
             tPrewarm - t0, tBwRender - tPrewarm, tDisplay - tBwRender, tBwStore - tDisplay, tBwRestore - tBwStore,
             tEnd - t0);
   }
+}
+
+void EpubReaderActivity::onScreenshotRequest() {
+  if (!section || !lastPageWasFactoryGray) return;
+
+  auto p = section->loadPageFromSectionFile();
+  if (!p) return;
+
+  struct PageRenderCtx {
+    Page* page;
+    int fontId, left, top;
+    const EpubReaderActivity* activity;
+  };
+  PageRenderCtx grayCtx{p.get(), SETTINGS.getReaderFontId(), lastFactoryMarginLeft, lastFactoryMarginTop, this};
+  const auto grayFn = [](const GfxRenderer& r, const void* raw) {
+    const auto* c = static_cast<const PageRenderCtx*>(raw);
+    c->page->render(const_cast<GfxRenderer&>(r), c->fontId, c->left, c->top);
+    c->activity->renderStatusBar();
+  };
+
+  renderer.renderGrayscale(GfxRenderer::GrayscaleMode::FactoryQuality, grayFn, &grayCtx);
+  renderer.clearScreen();
+  renderer.cleanupGrayscaleWithFrameBuffer();
 }
 
 void EpubReaderActivity::renderStatusBar() const {

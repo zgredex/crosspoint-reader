@@ -41,6 +41,20 @@ class GfxRenderer {
     Differential,    // Differential 2-bit overlay (no LUT); no pre-flash, requires prior BW state
   };
 
+  // Display state — tracks whether the physical display was last updated via a factory LUT render.
+  // BW: frameBuffer mirrors the display (menus, EPUB reader).
+  // FactoryLut: display holds a grayscale image; frameBuffer has been reset to white by
+  // cleanupGrayscaleWithFrameBuffer() and no longer represents what is visually shown.
+  enum class DisplayState { BW, FactoryLut };
+
+  // One-shot hook fired in renderGrayscaleSinglePass after renderFn() writes both planes
+  // but before they are pushed to the controller. At that moment:
+  //   lsbPlane = frameBuffer (LSB / BW RAM plane)
+  //   msbPlane = secondaryFrameBuffer (MSB / RED RAM plane)
+  // Hook is cleared automatically after firing.
+  using ScreenshotHook = void (*)(const uint8_t* lsbPlane, const uint8_t* msbPlane, int physWidth, int physHeight,
+                                  void* ctx);
+
  private:
   static constexpr size_t BW_BUFFER_CHUNK_SIZE = 8000;  // 8KB chunks to allow for non-contiguous memory
 
@@ -56,6 +70,9 @@ class GfxRenderer {
   uint32_t frameBufferSize = HalDisplay::BUFFER_SIZE;
   std::vector<uint8_t*> bwBufferChunks;
   std::map<int, EpdFontFamily> fontMap;
+  mutable DisplayState displayState = DisplayState::BW;
+  ScreenshotHook screenshotHook = nullptr;
+  void* screenshotHookCtx = nullptr;
 
   // Mutable because drawText() is const but needs to delegate scan-mode
   // recording to the (non-const) FontCacheManager. Same pragmatic compromise
@@ -155,6 +172,9 @@ class GfxRenderer {
   void drawTextRotated90CW(int fontId, int x, int y, const char* text, bool black = true,
                            EpdFontFamily::Style style = EpdFontFamily::REGULAR) const;
   int getTextHeight(int fontId) const;
+
+  DisplayState getDisplayState() const { return displayState; }
+  void setScreenshotHook(ScreenshotHook hook, void* ctx);
 
   // Grayscale functions
   void setRenderMode(const RenderMode mode) { this->renderMode = mode; }

@@ -355,7 +355,16 @@ void loop() {
       screenshotButtonsReleased = false;
       {
         RenderLock lock;
-        ScreenshotUtil::takeScreenshot(renderer);
+        if (renderer.getDisplayState() == GfxRenderer::DisplayState::FactoryLut) {
+          // Display shows a grayscale image held only as physical particle positions.
+          // frameBuffer has been reset to white — do NOT use the BW screenshot path.
+          // Install a hook so the next renderGrayscaleSinglePass call captures both planes.
+          ScreenshotUtil::prepareFactoryLutScreenshot(renderer);
+          Activity* activity = activityManager.getCurrentActivity();
+          if (activity) activity->onScreenshotRequest();
+        } else {
+          ScreenshotUtil::takeScreenshot(renderer);
+        }
       }
     }
     return;

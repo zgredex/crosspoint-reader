@@ -12,7 +12,9 @@ class PxcViewerActivity final : public Activity {
   void onEnter() override;
   void onExit() override;
   void loop() override;
+  void onScreenshotRequest() override;
 
  private:
   std::string filePath;
+  void renderGrayscaleImage();
 };
