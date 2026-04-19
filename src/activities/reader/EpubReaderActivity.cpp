@@ -712,6 +712,9 @@ void EpubReaderActivity::renderContents(std::unique_ptr<Page> page, const int or
   auto* fcm = renderer.getFontCacheManager();
   fcm->resetStats();
 
+  g_epubDitherMode = SETTINGS.ditherMode;
+  g_epubUseAA = SETTINGS.textAntiAliasing;
+
   // Font prewarm: scan pass accumulates text, then prewarm, then real render
   const uint32_t heapBefore = esp_get_free_heap_size();
   auto scope = fcm->createPrewarmScope();

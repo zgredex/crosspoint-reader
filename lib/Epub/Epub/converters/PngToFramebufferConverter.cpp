@@ -36,6 +36,8 @@ struct PngContext {
   bool caching{false};
 
   uint8_t* grayLineBuffer{nullptr};
+
+  DitherCtx ditherCtx;
 };
 
 // File I/O callbacks use pFile->fHandle to access the FsFile*,
@@ -190,9 +192,17 @@ int pngDrawCallback(PNGDRAW* pDraw) {
   // Render scaled row using Bresenham-style integer stepping (no floating-point division)
   int dstWidth = ctx->dstWidth;
   int outXBase = ctx->config->x;
-  int screenWidth = ctx->screenWidth;
+  int screenWidth = ctx->screenHeight;
   bool useDithering = ctx->config->useDithering;
   bool caching = ctx->caching;
+
+  DitherCtx& dither = ctx->ditherCtx;
+  dither.mode = static_cast<DitherMode>(ctx->config->ditherMode);
+
+  // Init dither state for error-diffusion modes (PNG processes row by row, full width)
+  if (useDithering && dstY == 0 && (dither.mode == DitherMode::FloydSteinberg || dither.mode == DitherMode::Atkinson)) {
+    dither.initForBlock(dstWidth);
+  }
 
   // Pre-compute orientation and render-mode state once per row
   DirectPixelWriter pw;
@@ -215,7 +225,7 @@ int pngDrawCallback(PNGDRAW* pDraw) {
 
       uint8_t ditheredGray;
       if (useDithering) {
-        ditheredGray = applyBayerDither4Level(gray, outX, outY);
+        ditheredGray = dither.process(gray, outX, outY, outXBase, outY);
       } else {
         ditheredGray = gray / 85;
         if (ditheredGray > 3) ditheredGray = 3;
@@ -231,6 +241,8 @@ int pngDrawCallback(PNGDRAW* pDraw) {
       srcX++;
     }
   }
+
+  dither.nextRow();
 
   return 1;
 }

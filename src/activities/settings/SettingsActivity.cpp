@@ -202,6 +202,10 @@ void SettingsActivity::toggleCurrentSetting() {
   }
 
   SETTINGS.saveToFile();
+
+  if (setting.valuePtr == &CrossPointSettings::ditherMode) {
+    ClearCacheActivity::clearReadingCache();
+  }
 }
 
 void SettingsActivity::render(RenderLock&&) {

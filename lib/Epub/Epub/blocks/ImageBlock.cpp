@@ -2,10 +2,14 @@
 
 #include <GfxRenderer.h>
 #include <Logging.h>
+
 #include <Serialization.h>
 
 #include "../converters/DirectPixelWriter.h"
 #include "../converters/ImageDecoderFactory.h"
+
+uint8_t g_epubDitherMode = 0;
+bool g_epubUseAA = true;
 
 // Cache file format:
 // - uint16_t width
@@ -134,9 +138,10 @@ void ImageBlock::render(GfxRenderer& renderer, const int x, const int y) {
   config.maxHeight = height;
   config.useGrayscale = true;
   config.useDithering = true;
+  config.ditherMode = g_epubDitherMode;
   config.performanceMode = false;
-  config.useExactDimensions = true;  // Use pre-calculated dimensions to avoid rounding mismatches
-  config.cachePath = cachePath;      // Enable caching during decode
+  config.useExactDimensions = true;
+  config.cachePath = cachePath;
 
   ImageToFramebufferDecoder* decoder = ImageDecoderFactory::getDecoder(imagePath);
   if (!decoder) {

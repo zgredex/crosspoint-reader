@@ -38,6 +38,8 @@ struct JpegContext {
 
   PixelCache cache;
   bool caching{false};
+
+  DitherCtx ditherCtx;
 };
 
 // File I/O callbacks use pFile->fHandle to access the FsFile*,
@@ -164,6 +166,14 @@ int jpegDrawCallback(JPEGDRAW* pDraw) {
     cw.init(ctx->cache.buffer, ctx->cache.bytesPerRow, ctx->cache.originX);
   }
 
+  DitherCtx& dither = ctx->ditherCtx;
+  dither.mode = static_cast<DitherMode>(ctx->config->ditherMode);
+
+  // Init dither state for this MCU block (error-diffusion modes need per-block init)
+  if (useDithering && (dither.mode == DitherMode::FloydSteinberg || dither.mode == DitherMode::Atkinson)) {
+    dither.initForBlock(dstXEnd - dstXStart);
+  }
+
   // === 1:1 fast path: no scaling math ===
   if (fineScaleFP == FP_ONE) {
     for (int dstY = dstYStart; dstY < dstYEnd; dstY++) {
@@ -176,7 +186,7 @@ int jpegDrawCallback(JPEGDRAW* pDraw) {
         uint8_t gray = row[dstX - blockX];
         uint8_t dithered;
         if (useDithering) {
-          dithered = applyBayerDither4Level(gray, outX, outY);
+          dithered = dither.process(gray, outX, outY, cfgX + dstXStart, outY);
         } else {
           dithered = gray / 85;
           if (dithered > 3) dithered = 3;
@@ -184,6 +194,7 @@ int jpegDrawCallback(JPEGDRAW* pDraw) {
         pw.writePixel(dithered);
         if (caching) cw.writePixel(outX, dithered);
       }
+      dither.nextRow();
     }
     return 1;
   }
@@ -235,7 +246,7 @@ int jpegDrawCallback(JPEGDRAW* pDraw) {
 
         uint8_t dithered;
         if (useDithering) {
-          dithered = applyBayerDither4Level(gray, outX, outY);
+          dithered = dither.process(gray, outX, outY, cfgX + dstXStart, outY);
         } else {
           dithered = gray / 85;
           if (dithered > 3) dithered = 3;
@@ -258,7 +269,7 @@ int jpegDrawCallback(JPEGDRAW* pDraw) {
 
         uint8_t dithered;
         if (useDithering) {
-          dithered = applyBayerDither4Level(gray, outX, outY);
+          dithered = dither.process(gray, outX, outY, cfgX + dstXStart, outY);
         } else {
           dithered = gray / 85;
           if (dithered > 3) dithered = 3;
@@ -284,7 +295,7 @@ int jpegDrawCallback(JPEGDRAW* pDraw) {
 
         uint8_t dithered;
         if (useDithering) {
-          dithered = applyBayerDither4Level(gray, outX, outY);
+          dithered = dither.process(gray, outX, outY, cfgX + dstXStart, outY);
         } else {
           dithered = gray / 85;
           if (dithered > 3) dithered = 3;
@@ -292,6 +303,7 @@ int jpegDrawCallback(JPEGDRAW* pDraw) {
         pw.writePixel(dithered);
         if (caching) cw.writePixel(outX, dithered);
       }
+      dither.nextRow();
     }
     return 1;
   }
@@ -317,7 +329,7 @@ int jpegDrawCallback(JPEGDRAW* pDraw) {
 
       uint8_t dithered;
       if (useDithering) {
-        dithered = applyBayerDither4Level(gray, outX, outY);
+        dithered = dither.process(gray, outX, outY, cfgX + dstXStart, outY);
       } else {
         dithered = gray / 85;
         if (dithered > 3) dithered = 3;
@@ -325,6 +337,7 @@ int jpegDrawCallback(JPEGDRAW* pDraw) {
       pw.writePixel(dithered);
       if (caching) cw.writePixel(outX, dithered);
     }
+    dither.nextRow();
   }
 
   return 1;

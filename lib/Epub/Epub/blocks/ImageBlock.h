@@ -1,10 +1,14 @@
 #pragma once
 #include <HalStorage.h>
 
+#include <cstdint>
 #include <memory>
 #include <string>
 
 #include "Block.h"
+
+extern uint8_t g_epubDitherMode;
+extern bool g_epubUseAA;
 
 class ImageBlock final : public Block {
  public:

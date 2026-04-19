@@ -65,6 +65,10 @@ inline const std::vector<SettingInfo>& getSettingsList() {
       SettingInfo::Enum(StrId::STR_IMAGES, &CrossPointSettings::imageRendering,
                         {StrId::STR_IMAGES_DISPLAY, StrId::STR_IMAGES_PLACEHOLDER, StrId::STR_IMAGES_SUPPRESS},
                         "imageRendering", StrId::STR_CAT_READER),
+      SettingInfo::Enum(StrId::STR_DITHER_MODE, &CrossPointSettings::ditherMode,
+                        {StrId::STR_DITHER_BAYER_4X4, StrId::STR_DITHER_BAYER_8X8, StrId::STR_DITHER_WHITE_NOISE,
+                         StrId::STR_DITHER_FLOYD_STEINBERG, StrId::STR_DITHER_ATKINSON},
+                        "ditherMode", StrId::STR_CAT_READER),
       // --- Controls ---
       SettingInfo::Enum(StrId::STR_SIDE_BTN_LAYOUT, &CrossPointSettings::sideButtonLayout,
                         {StrId::STR_PREV_NEXT, StrId::STR_NEXT_PREV}, "sideButtonLayout", StrId::STR_CAT_CONTROLS),

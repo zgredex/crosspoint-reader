@@ -9,6 +9,30 @@
 #include "components/UITheme.h"
 #include "fontIds.h"
 
+void ClearCacheActivity::clearReadingCache() {
+  LOG_DBG("CLEAR_CACHE", "Clearing reading cache (silent)...");
+  auto root = Storage.open("/.crosspoint");
+  if (!root || !root.isDirectory()) {
+    if (root) root.close();
+    return;
+  }
+
+  char name[128];
+  for (auto file = root.openNextFile(); file; file = root.openNextFile()) {
+    file.getName(name, sizeof(name));
+    String itemName(name);
+    if (file.isDirectory() && (itemName.startsWith("epub_") || itemName.startsWith("xtc_"))) {
+      String fullPath = "/.crosspoint/" + itemName;
+      file.close();
+      Storage.removeDir(fullPath.c_str());
+    } else {
+      file.close();
+    }
+  }
+  root.close();
+  LOG_DBG("CLEAR_CACHE", "Cache cleared");
+}
+
 void ClearCacheActivity::onEnter() {
   Activity::onEnter();
 

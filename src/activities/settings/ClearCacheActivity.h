@@ -15,6 +15,8 @@ class ClearCacheActivity final : public Activity {
   bool skipLoopDelay() override { return true; }  // Prevent power-saving mode
   void render(RenderLock&&) override;
 
+  static void clearReadingCache();
+
  private:
   enum State { WARNING, CLEARING, SUCCESS, FAILED };
 
