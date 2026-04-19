@@ -27,6 +27,10 @@ class EpubReaderActivity final : public Activity {
   bool pendingScreenshot = false;
   bool skipNextButtonCheck = false;  // Skip button processing for one frame after subactivity exit
   bool automaticPageTurnActive = false;
+  // Context saved from the last factory-gray image page render, used by onScreenshotRequest().
+  bool lastPageWasFactoryGray = false;
+  int lastFactoryMarginTop = 0;
+  int lastFactoryMarginLeft = 0;
 
   // Footnote support
   std::vector<FootnoteEntry> currentPageFootnotes;
@@ -61,5 +65,6 @@ class EpubReaderActivity final : public Activity {
   void onExit() override;
   void loop() override;
   void render(RenderLock&& lock) override;
+  void onScreenshotRequest() override;
   bool isReaderActivity() const override { return true; }
 };
