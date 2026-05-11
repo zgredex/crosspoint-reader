@@ -1,0 +1,1500 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Sleep Screens - CrossPoint Reader</title>
+    <style>
+      :root {
+        --font-color: #333;
+        --bg: #f5f5f5;
+        --title-color: #2c3e50;
+        --card-bg: #FFF;
+        --label-color: #7f8c8d;
+        --border-color: #eee;
+        --accent-color: rgb(110, 154, 130);
+        --accent-hover-color: #5a8c73;
+        --accent-color-10: rgba(110, 154, 130, 0.12);
+        --danger-color: #e74c3c;
+        --muted-color: #95a5a6;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --font-color: #f5f5f5;
+          --bg: #333;
+          --title-color: #ecf0f1;
+          --card-bg: #444;
+          --label-color: #bdc3c7;
+          --border-color: #555;
+          color-scheme: dark;
+        }
+      }
+      * { box-sizing: border-box; }
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+          Oxygen, Ubuntu, sans-serif;
+        max-width: 1400px;
+        margin: 0 auto;
+        padding: 20px;
+        background-color: var(--bg);
+        color: var(--font-color);
+      }
+      h1 {
+        color: var(--title-color);
+        border-bottom: 2px solid var(--accent-color);
+        padding-bottom: 10px;
+      }
+      h2 { color: var(--title-color); margin-top: 0; }
+      h3 { margin: 0 0 8px 0; color: var(--title-color); font-size: 1em; }
+      .card {
+        background: var(--card-bg);
+        border-radius: 8px;
+        padding: 20px;
+        margin: 15px 0;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+      }
+      .nav-links {
+        margin: 20px 0;
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+      }
+      .nav-links a {
+        padding: 10px 20px;
+        color: var(--font-color);
+        text-decoration: none;
+        border-radius: 4px;
+      }
+      .nav-links a.active {
+        background-color: var(--accent-color);
+        color: white;
+      }
+      .nav-links a:not(.active):hover {
+        background-color: var(--accent-hover-color);
+        color: white;
+      }
+      .message {
+        padding: 12px;
+        border-radius: 4px;
+        margin: 15px 0;
+        text-align: center;
+      }
+      .message.success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+      .message.error   { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+      .message.info    { background: var(--accent-color-10); color: var(--title-color); border: 1px solid var(--accent-color); }
+      .message[hidden] { display: none; }
+
+      /* Converter layout: three cards side-by-side */
+      .pxc-app {
+        display: grid;
+        grid-template-columns: 1fr 1.15fr 1.35fr;
+        gap: 16px;
+        align-items: start;
+      }
+      @media (max-width: 900px) {
+        .pxc-app { grid-template-columns: 1fr; }
+      }
+      .pxc-card { margin: 0; padding: 16px; }
+      .pxc-section-title {
+        margin: 0 0 12px;
+        font-size: 0.78rem;
+        text-transform: uppercase;
+        letter-spacing: 0.6px;
+        color: var(--label-color);
+        font-weight: 600;
+      }
+
+      /* Drop zone */
+      .pxc-drop-zone {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        padding: 24px 16px;
+        border: 2px dashed var(--border-color);
+        border-radius: 6px;
+        background: var(--bg);
+        color: var(--label-color);
+        cursor: pointer;
+        font-size: 0.9em;
+        text-align: center;
+        transition: border-color .15s, background .15s, color .15s;
+      }
+      .pxc-drop-zone:hover, .pxc-drop-zone.over {
+        border-color: var(--accent-color);
+        color: var(--accent-color);
+        background: var(--accent-color-10);
+      }
+      .pxc-drop-zone svg { width: 32px; height: 32px; stroke: currentColor; opacity: 0.8; }
+      .pxc-drop-zone small { color: var(--muted-color); font-size: 0.78rem; }
+      .pxc-drop-zone input { display: none; }
+
+      /* Source preview area with crop overlay */
+      .pxc-editor-section { margin-top: 14px; }
+      .pxc-editor-section[hidden] { display: none; }
+      .pxc-source-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 8px;
+      }
+      .pxc-change-btn {
+        background: transparent;
+        color: var(--label-color);
+        border: 1px solid var(--border-color);
+        border-radius: 4px;
+        padding: 4px 10px;
+        font-size: 0.8em;
+        cursor: pointer;
+      }
+      .pxc-change-btn:hover { color: var(--accent-color); border-color: var(--accent-color); }
+      .pxc-source-frame {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: var(--bg);
+        border-radius: 6px;
+        padding: 8px;
+        min-height: 200px;
+      }
+      .pxc-source-wrap { position: relative; display: inline-block; line-height: 0; user-select: none; }
+      .pxc-source-frame canvas { max-width: 100%; max-height: 420px; display: block; }
+      .pxc-crop-box {
+        position: absolute;
+        box-sizing: border-box;
+        border: 1px solid var(--accent-color);
+        cursor: move;
+        touch-action: none;
+        z-index: 2;
+      }
+      .pxc-crop-box[hidden] { display: none; }
+      .pxc-crop-box::before {
+        content: '';
+        position: absolute;
+        inset: 0;
+        pointer-events: none;
+        border: 1px dashed rgba(255, 255, 255, 0.7);
+      }
+      .pxc-crop-dim {
+        position: absolute;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.35);
+        pointer-events: none;
+        z-index: 1;
+      }
+      .pxc-crop-dim[hidden] { display: none; }
+      .pxc-crop-handle {
+        position: absolute;
+        width: 11px;
+        height: 11px;
+        background: #fff;
+        border: 1px solid var(--accent-color);
+        border-radius: 2px;
+        touch-action: none;
+      }
+      .pxc-crop-handle[data-handle="n"]  { top: -6px;    left: 50%;   transform: translateX(-50%); cursor: ns-resize; }
+      .pxc-crop-handle[data-handle="s"]  { bottom: -6px; left: 50%;   transform: translateX(-50%); cursor: ns-resize; }
+      .pxc-crop-handle[data-handle="e"]  { right: -6px;  top: 50%;    transform: translateY(-50%); cursor: ew-resize; }
+      .pxc-crop-handle[data-handle="w"]  { left: -6px;   top: 50%;    transform: translateY(-50%); cursor: ew-resize; }
+      .pxc-crop-handle[data-handle="nw"] { top: -6px;    left: -6px;  cursor: nwse-resize; }
+      .pxc-crop-handle[data-handle="ne"] { top: -6px;    right: -6px; cursor: nesw-resize; }
+      .pxc-crop-handle[data-handle="sw"] { bottom: -6px; left: -6px;  cursor: nesw-resize; }
+      .pxc-crop-handle[data-handle="se"] { bottom: -6px; right: -6px; cursor: nwse-resize; }
+      .pxc-file-info {
+        font-size: 0.78em;
+        color: var(--label-color);
+        margin-top: 8px;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+      }
+
+      /* Settings panel internals: two columns with vertical divider + dither below */
+      .pxc-settings-grid {
+        position: relative;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        column-gap: 14px;
+      }
+      .pxc-settings-grid::before {
+        content: '';
+        position: absolute;
+        top: 4px;
+        bottom: 4px;
+        left: 50%;
+        width: 1px;
+        background: var(--border-color);
+      }
+      .pxc-settings-col-inner { display: flex; flex-direction: column; min-width: 0; }
+      .pxc-settings-full {
+        margin-top: 6px;
+        padding-top: 12px;
+        border-top: 1px solid var(--border-color);
+      }
+      .pxc-panel-section { padding: 8px 0; }
+      .pxc-panel-section + .pxc-panel-section { border-top: 1px solid var(--border-color); }
+      .pxc-panel-section.disabled { opacity: 0.45; pointer-events: none; }
+      .pxc-panel-heading {
+        font-size: 0.72rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        color: var(--label-color);
+        margin: 0 0 6px;
+        font-weight: 600;
+      }
+
+      .pxc-pill-group { display: flex; gap: 6px; }
+      .pxc-pill-group--wrap { flex-wrap: wrap; }
+      .pxc-pill {
+        flex: 1 1 auto;
+        background: transparent;
+        color: var(--font-color);
+        border: 1px solid var(--border-color);
+        border-radius: 4px;
+        padding: 5px 8px;
+        font-size: 0.8rem;
+        cursor: pointer;
+        transition: border-color .12s, color .12s, background .12s;
+      }
+      .pxc-pill:hover { border-color: var(--accent-color); color: var(--accent-color); }
+      .pxc-pill.active {
+        background: var(--accent-color);
+        color: #fff;
+        border-color: var(--accent-color);
+      }
+      .pxc-pill-group--wrap .pxc-pill { flex: 0 0 auto; }
+
+      .pxc-pos-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        grid-template-rows: repeat(3, 1fr);
+        gap: 3px;
+        aspect-ratio: 1 / 1;
+        max-width: 88px;
+        margin: 0 auto;
+      }
+      .pxc-pos-btn {
+        position: relative;
+        background: transparent;
+        border: 1px solid var(--border-color);
+        border-radius: 3px;
+        cursor: pointer;
+      }
+      .pxc-pos-btn::after {
+        content: '';
+        position: absolute;
+        width: 5px; height: 5px;
+        border-radius: 50%;
+        background: var(--label-color);
+      }
+      .pxc-pos-btn[data-pos="tl"]::after { top: 4px; left: 4px; }
+      .pxc-pos-btn[data-pos="tc"]::after { top: 4px; left: 50%; transform: translateX(-50%); }
+      .pxc-pos-btn[data-pos="tr"]::after { top: 4px; right: 4px; }
+      .pxc-pos-btn[data-pos="ml"]::after { top: 50%; left: 4px; transform: translateY(-50%); }
+      .pxc-pos-btn[data-pos="mc"]::after { top: 50%; left: 50%; transform: translate(-50%,-50%); }
+      .pxc-pos-btn[data-pos="mr"]::after { top: 50%; right: 4px; transform: translateY(-50%); }
+      .pxc-pos-btn[data-pos="bl"]::after { bottom: 4px; left: 4px; }
+      .pxc-pos-btn[data-pos="bc"]::after { bottom: 4px; left: 50%; transform: translateX(-50%); }
+      .pxc-pos-btn[data-pos="br"]::after { bottom: 4px; right: 4px; }
+      .pxc-pos-btn:hover { border-color: var(--accent-color); }
+      .pxc-pos-btn.active { border-color: var(--accent-color); background: var(--accent-color-10); }
+      .pxc-pos-btn.active::after { background: var(--accent-color); }
+
+      .pxc-rotate-group, .pxc-mirror-group { display: flex; gap: 6px; align-items: center; }
+      .pxc-rotate-btn, .pxc-mirror-btn {
+        flex: 1;
+        background: transparent;
+        color: var(--font-color);
+        border: 1px solid var(--border-color);
+        border-radius: 4px;
+        padding: 5px 6px;
+        font-size: 0.9rem;
+        cursor: pointer;
+      }
+      .pxc-rotate-btn:hover, .pxc-mirror-btn:hover { border-color: var(--accent-color); color: var(--accent-color); }
+      .pxc-mirror-btn.active { background: var(--accent-color); color: #fff; border-color: var(--accent-color); }
+      .pxc-rotate-val { min-width: 38px; text-align: center; font-family: monospace; font-size: 0.8rem; color: var(--label-color); }
+
+      .pxc-tone-row {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        column-gap: 6px;
+        row-gap: 2px;
+        align-items: center;
+        margin-bottom: 6px;
+      }
+      .pxc-tone-label { font-size: 0.74rem; color: var(--label-color); grid-column: 1; }
+      .pxc-tone-val { font-family: monospace; font-size: 0.74rem; color: var(--font-color); text-align: right; grid-column: 2; }
+      .pxc-tone-slider { width: 100%; accent-color: var(--accent-color); grid-column: 1 / -1; }
+      .pxc-tone-btns { display: flex; gap: 6px; margin-top: 6px; }
+      .pxc-tone-btn {
+        flex: 1;
+        background: transparent;
+        color: var(--label-color);
+        border: 1px solid var(--border-color);
+        border-radius: 4px;
+        padding: 4px 8px;
+        font-size: 0.76rem;
+        cursor: pointer;
+      }
+      .pxc-tone-btn:hover { border-color: var(--accent-color); color: var(--accent-color); }
+
+      .pxc-toggle-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+      .pxc-toggle-label { font-size: 0.85rem; color: var(--font-color); }
+      .pxc-toggle { position: relative; width: 40px; height: 22px; display: inline-block; }
+      .pxc-toggle input { opacity: 0; width: 0; height: 0; }
+      .pxc-toggle-track {
+        position: absolute; inset: 0;
+        background: #ccc;
+        border-radius: 11px;
+        cursor: pointer;
+        transition: background .15s;
+      }
+      @media (prefers-color-scheme: dark) {
+        .pxc-toggle-track { background: #666; }
+      }
+      .pxc-toggle-track::before {
+        content: '';
+        position: absolute;
+        top: 2px; left: 2px;
+        width: 18px; height: 18px;
+        background: #fff;
+        border-radius: 50%;
+        transition: transform .15s;
+      }
+      .pxc-toggle input:checked + .pxc-toggle-track { background: var(--accent-color); }
+      .pxc-toggle input:checked + .pxc-toggle-track::before { transform: translateX(18px); }
+
+      /* Preview + uploads */
+      .pxc-preview-canvas {
+        display: block;
+        width: 100%;
+        max-width: 100%;
+        height: auto;
+        margin: 0 auto;
+        background: #fff;
+        border-radius: 4px;
+        image-rendering: pixelated;
+      }
+      .pxc-download-group { display: flex; flex-direction: column; gap: 6px; margin-top: 14px; }
+      .pxc-upload-btn {
+        background: var(--accent-color);
+        color: #fff;
+        border: none;
+        border-radius: 4px;
+        padding: 7px 12px;
+        font-size: 0.82em;
+        font-weight: 500;
+        cursor: pointer;
+        transition: background .15s, opacity .15s;
+      }
+      .pxc-upload-btn:hover:not([disabled]) { background: var(--accent-hover-color); }
+      .pxc-upload-btn[disabled] { opacity: 0.45; cursor: not-allowed; }
+      .pxc-upload-btn.secondary {
+        background: transparent;
+        color: var(--accent-color);
+        border: 1px solid var(--accent-color);
+      }
+      .pxc-upload-btn.secondary:hover:not([disabled]) { background: var(--accent-color-10); }
+      .pxc-note {
+        font-size: 0.74em;
+        color: var(--muted-color);
+        margin: 8px 0 0;
+        text-align: center;
+        line-height: 1.4;
+      }
+      .pxc-progress {
+        margin-top: 8px;
+        height: 5px;
+        background: var(--bg);
+        border-radius: 3px;
+        overflow: hidden;
+      }
+      .pxc-progress-fill { height: 100%; width: 0; background: var(--accent-color); transition: width .15s; }
+      .pxc-progress[hidden] { display: none; }
+
+      @media (max-width: 600px) {
+        body { padding: 10px; font-size: 14px; }
+        .card { padding: 12px; margin: 10px 0; }
+        h1 { font-size: 1.3em; }
+        .nav-links a { padding: 8px 12px; font-size: 0.9em; }
+      }
+    </style>
+  </head>
+  <body>
+    <h1>📚 CrossPoint Reader</h1>
+
+    <div class="nav-links">
+      <a href="/">Home</a>
+      <a href="/files">File Manager</a>
+      <a href="/settings">Settings</a>
+      <a href="/fonts">Fonts</a>
+      <a href="/sleep-screens" class="active">Sleep Screens</a>
+    </div>
+
+    <div id="statusBanner" class="message" hidden></div>
+
+    <div class="pxc-app">
+
+      <!-- LEFT: drop zone + source canvas with crop box -->
+      <div class="card pxc-card">
+        <p class="pxc-section-title">Source</p>
+        <label class="pxc-drop-zone" id="dropZone" for="fileInput">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12M12 16.5V3"/>
+          </svg>
+          Drop image, click, or paste
+          <small>PNG · JPG · WebP · BMP · GIF</small>
+          <input type="file" id="fileInput" accept="image/*">
+        </label>
+        <div class="pxc-editor-section" id="editorSection" hidden>
+          <div class="pxc-source-header">
+            <span class="pxc-panel-heading" id="sourceLabel">Loaded image</span>
+            <button class="pxc-change-btn" id="changeBtn">Clear</button>
+          </div>
+          <div class="pxc-source-frame">
+            <div class="pxc-source-wrap">
+              <canvas id="sourceCanvas"></canvas>
+              <div class="pxc-crop-dim" id="cropDim" hidden></div>
+              <div class="pxc-crop-box" id="cropBox" hidden>
+                <div class="pxc-crop-handle" data-handle="n"></div>
+                <div class="pxc-crop-handle" data-handle="s"></div>
+                <div class="pxc-crop-handle" data-handle="e"></div>
+                <div class="pxc-crop-handle" data-handle="w"></div>
+                <div class="pxc-crop-handle" data-handle="nw"></div>
+                <div class="pxc-crop-handle" data-handle="ne"></div>
+                <div class="pxc-crop-handle" data-handle="sw"></div>
+                <div class="pxc-crop-handle" data-handle="se"></div>
+              </div>
+            </div>
+          </div>
+          <div class="pxc-file-info" id="sourceInfo"></div>
+        </div>
+      </div>
+
+      <!-- MIDDLE: settings (two-col with vertical divider + dither full-width below) -->
+      <div class="card pxc-card">
+        <p class="pxc-section-title">Settings</p>
+        <div class="pxc-settings-grid">
+          <div class="pxc-settings-col-inner">
+            <div class="pxc-panel-section">
+              <p class="pxc-panel-heading">Scale</p>
+              <div class="pxc-pill-group" id="scaleGroup">
+                <button class="pxc-pill active" data-scale="crop">Crop</button>
+                <button class="pxc-pill" data-scale="fit">Fit</button>
+              </div>
+            </div>
+            <div class="pxc-panel-section disabled" id="posSection">
+              <p class="pxc-panel-heading">Position</p>
+              <div class="pxc-pos-grid" id="posGrid">
+                <button class="pxc-pos-btn" data-pos="tl" title="Top left"></button>
+                <button class="pxc-pos-btn" data-pos="tc" title="Top centre"></button>
+                <button class="pxc-pos-btn" data-pos="tr" title="Top right"></button>
+                <button class="pxc-pos-btn" data-pos="ml" title="Middle left"></button>
+                <button class="pxc-pos-btn active" data-pos="mc" title="Centre"></button>
+                <button class="pxc-pos-btn" data-pos="mr" title="Middle right"></button>
+                <button class="pxc-pos-btn" data-pos="bl" title="Bottom left"></button>
+                <button class="pxc-pos-btn" data-pos="bc" title="Bottom centre"></button>
+                <button class="pxc-pos-btn" data-pos="br" title="Bottom right"></button>
+              </div>
+              <p class="pxc-panel-heading" style="margin-top:10px;">Background</p>
+              <div class="pxc-pill-group" id="bgGroup">
+                <button class="pxc-pill active" data-bg="white">White</button>
+                <button class="pxc-pill" data-bg="black">Black</button>
+              </div>
+            </div>
+            <div class="pxc-panel-section">
+              <p class="pxc-panel-heading">Rotation</p>
+              <div class="pxc-rotate-group">
+                <button class="pxc-rotate-btn" id="rotateCCW" title="Rotate 90° counter-clockwise">↺</button>
+                <span class="pxc-rotate-val" id="rotateVal">0°</span>
+                <button class="pxc-rotate-btn" id="rotateCW" title="Rotate 90° clockwise">↻</button>
+              </div>
+            </div>
+            <div class="pxc-panel-section">
+              <p class="pxc-panel-heading">Mirror</p>
+              <div class="pxc-mirror-group">
+                <button class="pxc-mirror-btn" id="mirrorH" title="Flip horizontal">⇆ H</button>
+                <button class="pxc-mirror-btn" id="mirrorV" title="Flip vertical">⇅ V</button>
+              </div>
+            </div>
+          </div>
+          <div class="pxc-settings-col-inner">
+            <div class="pxc-panel-section">
+              <p class="pxc-panel-heading">Tone Range</p>
+              <div class="pxc-tone-row">
+                <span class="pxc-tone-label">Black</span>
+                <span class="pxc-tone-val" id="blackVal">0</span>
+                <input type="range" id="blackSlider" class="pxc-tone-slider" min="0" max="255" value="0" step="1">
+              </div>
+              <div class="pxc-tone-row">
+                <span class="pxc-tone-label">White</span>
+                <span class="pxc-tone-val" id="whiteVal">255</span>
+                <input type="range" id="whiteSlider" class="pxc-tone-slider" min="0" max="255" value="255" step="1">
+              </div>
+              <div class="pxc-tone-row">
+                <span class="pxc-tone-label">Gamma</span>
+                <span class="pxc-tone-val" id="gammaVal">1.00</span>
+                <input type="range" id="gammaSlider" class="pxc-tone-slider" min="30" max="500" value="100" step="1">
+              </div>
+              <div class="pxc-tone-btns">
+                <button class="pxc-tone-btn" id="autoLevelsBtn">Auto</button>
+                <button class="pxc-tone-btn" id="toneReset">Reset</button>
+              </div>
+            </div>
+            <div class="pxc-panel-section">
+              <p class="pxc-panel-heading">Contrast</p>
+              <div class="pxc-tone-row">
+                <span class="pxc-tone-label">±</span>
+                <span class="pxc-tone-val" id="contrastVal">0</span>
+                <input type="range" id="contrastSlider" class="pxc-tone-slider" min="-100" max="100" value="0" step="1">
+              </div>
+              <button class="pxc-tone-btn" id="contrastReset" style="width:100%;margin-top:4px;">Reset</button>
+            </div>
+            <div class="pxc-panel-section">
+              <div class="pxc-toggle-row">
+                <span class="pxc-toggle-label">Invert</span>
+                <label class="pxc-toggle"><input type="checkbox" id="invertToggle"><span class="pxc-toggle-track"></span></label>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="pxc-settings-full">
+          <div class="pxc-toggle-row" style="margin-bottom:10px;">
+            <span class="pxc-toggle-label">Dither</span>
+            <label class="pxc-toggle"><input type="checkbox" id="ditherToggle" checked><span class="pxc-toggle-track"></span></label>
+          </div>
+          <div class="pxc-pill-group pxc-pill-group--wrap" id="ditherAlgos">
+            <button class="pxc-pill active" data-dither="zhou-fang">Zhou-Fang</button>
+            <button class="pxc-pill" data-dither="atk">Atkinson</button>
+            <button class="pxc-pill" data-dither="blue-noise">Blue Noise</button>
+            <button class="pxc-pill" data-dither="bayer">Bayer</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- RIGHT: preview + upload buttons -->
+      <div class="card pxc-card">
+        <p class="pxc-section-title">Preview</p>
+        <canvas id="previewCanvas" class="pxc-preview-canvas" width="480" height="800"></canvas>
+        <div class="pxc-download-group">
+          <button class="pxc-upload-btn" id="uploadPxc" disabled>Upload .pxc to /.sleep/</button>
+          <button class="pxc-upload-btn secondary" id="uploadBmp" disabled>Upload .bmp to /.sleep/</button>
+          <button class="pxc-upload-btn secondary" id="downloadPxc" disabled>Download .pxc</button>
+        </div>
+        <div class="pxc-progress" id="uploadProgress" hidden><div class="pxc-progress-fill" id="uploadProgressFill"></div></div>
+        <p class="pxc-note">Final file uploads to /.sleep/. The device renders it on next sleep cycle.</p>
+      </div>
+
+    </div>
+
+  <script>
+  (function() {
+    'use strict';
+
+    // ====== PXC converter (hand-ported from zgredex/crosspoint-pxc-converter) ======
+    // Hardcoded pr1614 thresholds (no hidden preset toggle).
+    var GRAY_DISP = [0, 85, 170, 255];
+    var THRESHOLDS = [42, 127, 212];
+    function quantize(v) {
+      if (v < THRESHOLDS[0]) return 0;
+      if (v < THRESHOLDS[1]) return 1;
+      if (v < THRESHOLDS[2]) return 2;
+      return 3;
+    }
+
+    var BLUE_NOISE_64 = new Uint8Array([
+      161,96,30,63,233,86,114,25,60,90,10,118,199,236,108,11,247,117,19,148,49,111,153,199,122,249,58,174,120,99,227,59,38,177,26,238,119,217,147,22,92,124,67,220,98,183,212,115,28,88,202,148,18,193,163,47,198,173,143,10,155,186,128,196,
+      15,212,253,146,197,35,210,242,158,194,252,147,37,82,54,191,139,44,85,240,179,15,87,71,40,181,19,143,240,30,171,132,87,204,140,163,90,35,105,235,199,161,27,192,40,150,81,46,221,161,64,112,226,71,128,2,95,60,121,248,74,219,35,68,
+      113,170,77,9,125,97,176,4,134,34,70,97,183,132,158,227,95,166,218,66,133,210,238,161,135,225,93,203,51,76,213,8,250,106,14,51,248,193,170,55,136,216,83,114,229,18,247,194,136,4,251,41,171,90,209,245,148,230,27,177,52,101,144,239,
+      53,135,39,184,239,156,62,82,109,208,170,220,24,245,0,71,31,186,12,155,33,119,55,190,25,64,115,2,159,185,113,149,65,167,215,129,72,11,121,79,1,44,252,139,59,172,123,65,92,178,127,211,16,138,57,33,184,80,211,110,200,3,225,181,
+      93,198,227,108,52,20,223,187,247,55,13,125,60,202,108,212,126,250,109,206,93,227,4,99,245,167,214,137,253,94,41,229,192,27,84,178,225,151,209,242,181,102,166,23,190,103,10,159,227,24,102,75,192,238,166,99,125,13,157,41,136,164,79,20,
+      247,27,159,86,142,204,118,39,140,160,101,237,144,83,176,48,149,80,44,171,61,185,146,124,201,84,46,28,70,199,19,130,102,48,235,113,37,59,97,29,147,204,68,232,88,208,241,39,198,55,242,157,45,110,7,202,241,65,224,93,254,61,209,125,
+      146,70,216,1,251,73,168,93,22,225,78,193,39,163,25,232,191,6,234,139,23,255,75,41,17,152,237,180,119,224,168,61,245,161,141,18,203,170,137,230,53,115,15,153,46,126,74,148,108,140,186,28,133,231,83,152,48,171,132,18,184,31,103,176,
+      50,116,182,42,124,188,12,233,202,47,175,6,115,254,130,96,66,122,214,88,115,210,158,179,229,105,62,143,87,11,146,211,81,1,195,92,255,75,21,190,87,247,133,214,180,25,170,217,2,69,211,88,175,64,215,31,114,197,84,208,120,153,234,7,
+      201,243,95,150,210,57,104,137,64,122,148,214,62,198,14,216,173,36,154,187,49,11,98,56,131,213,21,191,248,53,108,34,186,115,222,51,155,110,216,128,8,169,40,76,109,252,56,94,237,124,18,254,113,22,183,137,250,1,44,238,73,54,216,86,
+      32,162,17,67,237,28,160,248,189,91,27,240,105,80,157,54,109,249,17,70,239,127,191,236,1,88,166,40,126,204,171,226,136,26,71,132,11,175,41,68,222,101,197,233,5,138,205,156,38,180,143,50,157,225,86,53,98,154,178,107,142,16,168,130,
+      63,219,137,198,114,176,83,40,3,223,169,45,139,184,32,230,135,84,206,143,169,213,36,76,145,201,112,231,73,5,95,58,251,162,182,239,201,96,246,186,139,28,151,59,187,85,19,115,196,82,234,99,203,5,146,188,213,66,229,28,194,251,97,189,
+      240,107,40,88,8,228,126,213,153,117,75,203,9,237,93,196,1,178,44,106,22,86,116,161,251,65,25,141,180,241,154,20,80,102,42,114,64,27,149,115,51,243,91,124,165,226,47,243,64,8,162,33,71,124,246,29,120,14,131,87,160,41,121,8,
+      80,146,187,254,154,72,49,182,100,59,251,126,162,58,116,146,68,222,127,245,63,230,184,26,48,176,221,90,47,107,189,130,215,196,5,230,168,219,82,4,209,163,14,217,32,105,144,171,128,221,106,185,230,168,47,79,238,175,200,51,210,74,229,172,
+      204,18,58,117,30,204,140,13,231,23,174,34,85,216,24,252,163,33,92,190,148,6,135,215,103,129,8,159,201,30,69,236,47,120,154,88,138,54,183,237,100,71,195,54,249,76,212,28,90,200,54,131,17,93,199,110,156,35,96,245,138,22,152,47,
+      128,238,163,220,178,105,246,89,191,132,219,108,197,132,173,50,106,207,15,167,46,204,93,69,232,192,76,249,121,226,143,17,164,66,246,37,210,18,119,157,29,136,177,111,154,0,189,61,251,12,147,240,65,218,144,9,212,70,123,3,182,111,213,91,
+      192,35,96,75,1,53,160,35,70,153,50,15,239,64,7,223,77,142,234,65,113,253,172,17,147,35,111,58,14,170,86,106,209,184,13,129,190,96,229,61,200,245,39,85,203,129,97,159,120,176,42,193,116,32,179,59,234,170,148,226,83,58,250,6,
+      65,119,210,144,239,131,218,199,114,243,96,184,78,144,193,118,180,41,125,196,83,31,126,56,243,164,207,140,217,43,192,253,38,83,109,222,72,167,42,141,81,10,124,228,20,240,45,220,31,234,72,97,163,254,84,132,99,24,53,191,37,163,136,175,
+      226,155,19,45,190,91,65,12,171,29,213,126,165,36,248,90,17,241,162,3,231,144,212,185,99,1,83,178,102,70,152,9,134,159,237,50,147,2,254,177,107,220,152,57,172,73,184,137,83,110,206,22,140,1,203,43,184,246,113,210,95,236,27,104,
+      48,184,252,109,165,27,123,229,85,142,62,2,229,108,56,159,215,68,100,52,180,95,19,70,119,221,41,245,23,231,120,213,60,179,22,200,100,212,122,21,204,44,187,100,144,116,25,209,5,151,173,222,57,231,110,152,219,11,68,142,20,123,198,80,
+      11,129,84,61,203,235,151,186,47,254,202,93,188,21,201,127,32,140,205,120,218,38,160,232,194,145,63,128,158,186,48,96,240,115,79,132,33,181,54,90,160,70,236,6,216,253,53,164,244,61,40,122,89,186,66,30,82,125,163,233,180,63,157,243,
+      209,148,219,7,136,42,98,5,117,158,31,133,74,150,234,79,179,254,16,172,74,247,134,50,16,174,91,201,6,77,143,30,194,5,218,164,243,69,225,139,247,28,133,89,36,77,197,105,86,134,232,195,19,164,129,249,176,201,39,88,2,221,40,113,
+      69,31,99,178,243,78,197,226,69,217,103,173,245,40,118,10,105,48,87,147,27,112,198,83,109,254,31,223,105,243,207,165,73,138,47,95,16,152,108,9,192,112,165,207,179,152,130,22,216,182,10,107,242,46,217,7,105,58,241,111,203,138,95,173,
+      191,248,156,45,114,18,164,128,23,183,56,14,206,65,184,224,158,212,189,231,58,165,3,235,151,59,121,168,45,127,15,100,251,175,231,188,122,201,39,219,78,57,228,45,103,13,231,47,155,69,37,160,73,147,91,205,157,21,134,164,31,77,231,16,
+      57,127,81,225,208,142,51,246,94,145,238,124,160,90,137,32,63,130,8,116,182,93,215,37,181,210,10,193,71,160,224,61,38,107,20,60,81,246,167,98,180,148,0,124,244,61,188,110,249,93,207,226,117,187,32,124,76,222,194,66,253,185,154,117,
+      235,1,170,24,64,187,85,173,38,205,76,43,227,3,250,193,97,238,77,43,246,144,66,129,99,76,141,242,94,27,186,147,205,128,158,216,143,12,54,135,22,241,194,84,159,204,76,139,5,171,123,51,13,254,61,229,176,43,96,8,122,51,27,203,
+      145,97,198,136,104,233,4,220,114,11,191,98,180,114,55,152,19,169,198,135,28,203,13,224,162,22,218,49,131,234,111,78,1,238,87,33,194,113,233,206,68,111,40,222,17,131,34,178,228,31,143,194,102,168,135,5,104,143,236,180,150,218,106,72,
+      41,220,55,254,33,156,125,70,161,252,130,154,29,217,83,209,119,51,221,102,161,80,111,252,41,199,108,178,7,166,37,221,190,52,171,254,68,163,85,33,187,145,169,102,52,255,91,214,60,86,241,67,24,215,78,199,245,21,71,211,25,89,246,164,
+      189,14,121,180,90,199,47,208,101,56,20,233,70,142,174,36,244,149,3,60,241,192,49,176,86,136,63,247,83,202,62,137,93,123,19,106,136,4,224,123,248,12,77,212,182,153,113,16,162,109,180,220,151,43,113,156,55,170,131,112,59,172,7,124,
+      240,87,165,65,17,243,141,14,177,221,84,196,45,248,11,106,71,191,94,176,118,18,149,123,0,221,153,29,120,146,241,12,157,231,204,61,218,177,51,151,98,58,236,122,20,67,231,202,133,39,2,124,94,247,187,31,219,85,197,35,229,135,206,65,
+      150,26,228,136,188,109,77,235,38,148,125,166,95,122,205,139,232,24,130,228,37,215,66,239,184,53,97,192,216,46,103,179,71,41,184,149,33,91,193,25,214,174,138,37,195,142,43,79,185,251,208,52,173,11,68,127,100,0,244,160,79,185,33,99,
+      52,195,103,36,218,56,165,120,191,64,1,213,26,180,55,87,170,49,202,76,157,91,199,103,30,230,162,11,72,168,25,209,250,116,16,100,246,130,229,81,113,2,206,84,107,247,171,12,101,63,155,81,234,141,195,238,151,178,52,106,14,252,117,215,
+      173,128,250,79,153,4,227,29,93,244,109,232,72,148,241,6,214,152,110,21,249,133,11,167,143,81,128,253,115,225,131,54,90,141,224,75,169,8,62,158,253,49,153,226,18,58,211,118,221,137,26,199,114,23,89,56,19,222,132,212,145,67,158,3,
+      235,66,14,181,208,99,129,174,205,47,157,186,43,103,193,118,39,69,233,174,57,188,42,242,62,203,44,183,19,86,197,157,9,173,194,48,211,112,183,36,196,125,67,182,134,165,86,150,35,239,96,169,46,226,156,207,113,75,32,90,180,44,222,92,
+      38,165,121,49,141,32,252,74,14,140,81,10,132,226,19,159,254,135,94,2,122,216,87,118,219,5,108,152,59,242,35,109,235,64,30,123,152,24,238,139,84,16,236,97,43,242,6,195,56,181,11,215,67,126,183,34,255,168,194,240,17,111,198,137,
+      191,84,212,240,89,190,57,158,215,116,247,200,167,89,51,79,182,26,197,223,154,67,179,28,139,190,235,92,214,140,170,77,211,133,255,86,229,98,67,207,107,164,214,29,202,69,128,228,109,74,147,107,244,3,79,102,140,7,125,63,157,232,77,19,
+      247,112,28,155,9,118,220,101,34,179,55,24,236,122,202,220,108,57,144,40,103,15,252,97,161,73,39,172,23,121,4,187,43,100,166,0,189,46,176,9,246,56,143,119,176,101,158,23,171,250,201,38,136,164,234,201,50,225,93,37,206,131,53,152,
+      216,59,184,71,232,170,21,138,232,91,149,105,66,33,147,7,168,232,85,242,169,206,133,48,229,17,130,249,82,194,60,226,153,20,207,73,138,219,156,127,35,192,75,4,251,50,218,89,44,126,16,86,182,57,29,151,72,185,164,249,104,6,178,95,
+      129,1,145,99,195,46,80,200,64,2,195,220,161,190,250,73,130,22,190,64,117,32,82,199,181,108,203,53,155,106,239,85,124,182,57,232,116,23,78,102,230,169,94,224,150,20,187,141,233,67,157,225,206,98,121,219,23,115,14,144,67,196,234,33,
+      171,200,253,30,126,152,241,114,167,253,46,129,13,90,113,38,208,99,141,8,213,150,233,3,63,149,78,223,30,208,15,146,33,248,104,159,39,245,183,211,52,16,135,198,62,110,76,209,0,194,104,48,19,251,174,80,196,243,84,212,45,121,158,74,
+      55,115,82,225,62,211,8,39,145,103,80,181,240,57,144,173,230,52,249,177,92,51,173,100,126,246,13,175,137,49,170,110,203,78,10,194,91,134,6,67,148,248,116,40,179,236,132,36,119,172,242,147,126,64,11,144,46,130,33,179,229,89,12,243,
+      218,41,161,13,108,175,95,190,223,16,214,117,28,224,204,1,81,156,120,42,224,138,242,25,161,44,192,115,92,253,73,222,54,174,140,224,51,207,163,111,193,82,26,211,89,9,168,255,59,90,23,77,167,193,235,94,224,172,105,150,21,133,187,101,
+      22,130,190,208,147,49,248,74,132,63,172,43,159,71,126,101,189,25,199,79,12,112,70,198,219,82,236,61,19,185,150,2,126,241,22,114,177,77,28,237,44,171,223,139,157,48,199,100,144,223,186,42,211,110,36,161,66,0,208,73,255,58,208,145,
+      175,232,91,69,228,21,121,162,26,239,199,141,97,196,20,253,147,63,240,162,208,182,34,133,96,8,142,165,217,122,39,197,96,155,69,37,250,129,214,92,137,1,106,66,243,118,76,27,208,10,132,237,88,6,134,215,118,237,48,192,97,166,36,80,
+      60,5,119,32,136,185,89,216,46,105,78,6,244,177,56,217,35,107,130,21,97,145,255,56,186,118,210,29,102,242,79,228,47,189,216,87,161,8,60,155,197,252,50,186,15,175,218,155,53,178,114,63,158,253,55,182,28,89,143,123,9,227,111,242,
+      188,148,252,171,55,238,0,195,140,167,223,127,36,87,119,166,77,185,228,48,217,67,0,160,226,46,174,74,50,143,17,164,119,10,134,182,103,229,185,36,116,78,131,208,94,40,127,248,107,81,228,20,196,104,145,75,200,167,245,38,185,151,18,127,
+      222,44,103,202,83,154,113,70,255,17,57,207,149,230,16,139,207,4,153,84,174,123,235,106,78,18,250,128,205,180,213,92,251,62,232,24,45,121,72,219,15,228,158,29,236,150,66,6,189,35,165,136,45,219,17,233,107,11,64,206,82,53,209,93,
+      26,163,73,11,221,29,183,40,125,88,176,108,69,192,51,240,98,59,248,115,37,201,25,189,149,216,95,158,3,113,59,26,148,195,82,151,207,239,139,172,102,47,181,71,111,193,225,89,214,118,245,77,186,92,163,41,131,224,156,111,138,250,169,70,
+      131,245,114,179,134,98,241,150,221,202,30,246,2,161,112,178,25,133,191,15,223,143,88,42,125,60,196,38,235,84,224,174,100,37,117,171,63,12,86,31,202,123,239,3,138,52,22,162,133,18,55,206,2,122,248,68,191,90,30,235,7,99,34,197,
+      3,205,56,235,42,207,61,7,103,47,154,132,93,223,34,80,213,159,73,100,166,65,251,162,232,12,116,72,184,135,43,124,238,210,1,247,101,186,156,250,60,148,82,210,169,255,104,183,65,151,222,102,142,179,27,213,149,54,172,196,49,160,227,106,
+      177,79,151,15,165,82,121,172,193,74,237,183,52,205,145,252,116,44,238,200,50,129,5,102,204,174,145,244,15,155,204,20,70,160,54,131,201,41,114,213,10,189,39,100,30,75,205,40,238,85,173,38,240,53,87,109,5,124,217,76,117,188,62,142,
+      45,218,98,127,196,230,27,249,137,15,115,24,78,126,20,64,169,9,142,23,227,177,213,75,54,30,90,217,106,65,253,91,191,139,227,88,18,231,75,134,94,165,244,120,221,152,116,5,195,125,15,200,74,157,196,231,167,250,22,139,244,13,89,238,
+      120,21,242,36,65,104,154,54,89,206,226,159,198,236,95,193,221,104,186,120,84,34,110,150,243,135,200,47,165,31,120,172,10,106,32,181,146,56,176,26,225,66,141,9,175,57,242,144,48,166,104,225,119,9,131,34,59,82,104,42,155,214,31,166,
+      72,183,156,209,138,0,190,223,36,148,62,103,42,173,4,153,50,78,249,60,155,235,195,18,181,115,2,81,185,225,146,55,217,243,68,211,119,255,155,199,112,46,207,88,193,23,97,215,79,248,61,32,180,254,99,212,185,150,204,175,70,101,131,203,
+      5,108,52,83,251,174,74,128,107,175,8,253,140,71,110,244,128,26,202,168,7,134,94,44,67,227,159,246,112,14,76,201,38,125,162,7,99,34,86,3,233,179,30,123,229,72,169,127,19,206,153,137,85,52,162,73,14,122,234,0,224,189,49,255,
+      147,228,195,23,117,43,212,15,237,194,81,211,27,228,188,35,210,146,96,45,219,73,253,169,209,98,30,61,208,135,236,101,153,87,197,58,223,188,131,54,143,101,252,159,48,141,236,38,183,113,4,217,188,24,227,138,242,36,91,57,117,24,163,80,
+      35,129,92,166,234,145,95,162,60,32,132,97,168,120,58,85,172,10,233,118,181,29,114,144,9,130,196,151,92,45,174,26,187,16,247,142,168,72,237,202,167,68,14,83,215,0,102,200,56,92,233,65,123,101,201,45,110,195,147,170,246,140,96,233,
+      177,58,220,6,68,201,27,246,111,218,153,52,200,12,158,217,108,67,189,81,149,206,54,230,85,244,43,178,7,251,66,122,230,77,112,44,25,109,16,94,34,222,135,187,116,166,69,249,149,177,36,164,243,13,156,82,175,64,221,25,75,209,9,200,
+      120,26,187,133,105,49,181,135,72,187,2,248,76,234,138,23,241,135,33,245,0,100,161,20,173,63,122,222,107,140,210,166,53,205,136,232,183,214,156,249,121,174,55,244,42,206,29,127,10,117,212,87,49,132,223,29,252,9,99,129,185,42,111,67,
+      250,151,78,241,154,227,85,16,230,43,123,172,107,38,94,178,50,205,163,60,129,222,71,192,105,212,22,78,191,35,86,13,104,154,0,69,91,127,51,80,4,204,103,21,94,142,225,192,80,239,20,141,203,72,190,112,142,200,162,52,240,153,220,167,
+      12,100,197,41,14,210,118,170,146,96,215,28,149,195,220,73,121,12,89,214,177,43,250,137,37,152,240,164,56,226,146,239,188,39,251,171,207,33,230,189,140,69,155,233,179,74,50,105,164,59,181,109,249,3,166,53,91,34,230,117,79,21,92,49,
+      134,211,60,124,177,68,34,255,57,197,81,236,61,117,4,160,192,255,146,110,24,83,116,12,205,88,126,2,111,175,23,125,75,220,119,58,145,13,167,110,239,37,214,125,10,151,255,17,136,204,31,154,44,98,128,237,210,69,178,3,205,142,188,234,
+      176,31,157,247,96,139,203,107,6,163,138,17,179,249,45,228,101,58,37,235,198,156,218,181,50,234,68,194,255,92,205,49,169,95,21,198,102,223,87,59,18,176,84,55,197,112,188,41,218,95,231,77,198,221,25,182,13,156,134,98,252,39,121,72,
+      109,227,79,0,220,21,184,75,237,40,104,209,75,130,88,150,24,133,170,74,4,129,62,94,168,141,28,159,42,137,71,244,5,149,213,134,42,160,254,128,207,149,106,228,32,237,90,169,66,123,7,133,173,63,146,76,105,241,46,193,62,165,215,7,
+      50,141,191,119,168,51,150,217,127,177,226,53,160,26,211,175,68,202,222,98,189,247,32,227,8,104,209,81,219,13,154,190,112,231,80,62,188,4,74,183,46,245,6,167,134,62,8,145,244,182,48,239,101,34,254,118,216,29,85,224,112,24,88,244
+    ]);
+
+    // Zhou-Fang threshold + per-intensity coefficients
+    var ZF_MOD_KEYS = [[0,0.0],[44,0.34],[64,0.5],[85,1.0],[95,0.17],[102,0.5],[107,0.7],[112,0.79],[127,1.0]];
+    var ZF_COEFF_KEYS = [
+      [0,[13,0,5]],[1,[1300249,0,499250]],[2,[213113,287,99357]],[3,[351854,0,199965]],
+      [4,[801100,0,490999]],[10,[704075,297466,303694]],[22,[46613,31917,21469]],
+      [32,[47482,30617,21900]],[44,[43024,42131,14826]],[64,[36411,43219,20369]],
+      [72,[38477,53843,7678]],[77,[40503,51547,7948]],[85,[35865,34108,30026]],
+      [95,[34117,36899,28983]],[102,[35464,35049,29485]],[107,[16477,18810,14712]],
+      [112,[33360,37954,28685]],[127,[35269,36066,28664]]
+    ];
+    var ZF = (function() {
+      var halfMod = new Float32Array(128);
+      for (var s = 0; s < ZF_MOD_KEYS.length - 1; s++) {
+        var k0 = ZF_MOD_KEYS[s][0], v0 = ZF_MOD_KEYS[s][1];
+        var k1 = ZF_MOD_KEYS[s+1][0], v1 = ZF_MOD_KEYS[s+1][1];
+        var last = s === ZF_MOD_KEYS.length - 2;
+        var num = k1 - k0 + (last ? 1 : 0);
+        for (var j = 0; j < num; j++) {
+          var t = last ? j / (num - 1) : j / num;
+          halfMod[k0 + j] = v0 + t * (v1 - v0);
+        }
+      }
+      var halfCoeffs = [new Float32Array(128), new Float32Array(128), new Float32Array(128)];
+      for (var s2 = 0; s2 < ZF_COEFF_KEYS.length - 1; s2++) {
+        var ck0 = ZF_COEFF_KEYS[s2][0], cv0 = ZF_COEFF_KEYS[s2][1];
+        var ck1 = ZF_COEFF_KEYS[s2+1][0], cv1 = ZF_COEFF_KEYS[s2+1][1];
+        var clast = s2 === ZF_COEFF_KEYS.length - 2;
+        var cnum = ck1 - ck0 + (clast ? 1 : 0);
+        for (var cj = 0; cj < cnum; cj++) {
+          var ct = clast ? cj / (cnum - 1) : cj / cnum;
+          for (var c = 0; c < 3; c++) halfCoeffs[c][ck0 + cj] = cv0[c] + ct * (cv1[c] - cv0[c]);
+        }
+      }
+      var mod = new Float32Array(256);
+      var coeffs = new Float32Array(256 * 3);
+      for (var i = 0; i < 128; i++) {
+        mod[i] = halfMod[i]; mod[255 - i] = halfMod[i];
+        var sum = halfCoeffs[0][i] + halfCoeffs[1][i] + halfCoeffs[2][i];
+        var a = halfCoeffs[0][i] / sum, b = halfCoeffs[1][i] / sum, cc = halfCoeffs[2][i] / sum;
+        coeffs[i*3] = a; coeffs[i*3+1] = b; coeffs[i*3+2] = cc;
+        coeffs[(255-i)*3] = a; coeffs[(255-i)*3+1] = b; coeffs[(255-i)*3+2] = cc;
+      }
+      return { mod: mod, coeffs: coeffs };
+    })();
+
+    function buildLuminanceBuffer(rgba) {
+      var n = rgba.length / 4;
+      var out = new Float32Array(n);
+      for (var i = 0; i < n; i++) {
+        out[i] = 0.299 * rgba[i*4] + 0.587 * rgba[i*4+1] + 0.114 * rgba[i*4+2];
+      }
+      return out;
+    }
+
+    function buildToneLut(blackPoint, whitePoint, gammaValue, contrastValue, invert) {
+      var lut = new Float32Array(256);
+      var bwActive = !(blackPoint <= 0 && whitePoint >= 255) && (whitePoint - blackPoint) > 0;
+      var bwRange = whitePoint - blackPoint;
+      var gammaActive = gammaValue !== 1.0;
+      var gammaInv = 1 / gammaValue;
+      var contrastActive = contrastValue !== 0;
+      var contrastFactor = contrastValue >= 0 ? 1 + contrastValue * 2 / 100 : 1 + contrastValue / 100;
+      for (var i = 0; i < 256; i++) {
+        var v = i;
+        if (bwActive) v = Math.max(0, Math.min(255, (v - blackPoint) / bwRange * 255));
+        if (gammaActive) {
+          var idx = Math.min(255, Math.max(0, Math.round(v)));
+          v = Math.pow(idx / 255, gammaInv) * 255;
+        }
+        if (contrastActive) v = Math.max(0, Math.min(255, (v - 127.5) * contrastFactor + 127.5));
+        if (invert) v = 255 - v;
+        lut[i] = v;
+      }
+      return lut;
+    }
+
+    function applyTone(buf, lut) {
+      for (var i = 0; i < buf.length; i++) {
+        var idx = Math.min(255, Math.max(0, Math.round(buf[i])));
+        buf[i] = lut[idx];
+      }
+    }
+
+    function ditherToIndexedGray(source, width, height, enabled, mode) {
+      var q = new Uint8Array(width * height);
+      var buf = new Float32Array(source);
+      if (!enabled) {
+        for (var i = 0; i < width * height; i++) q[i] = quantize(Math.max(0, Math.min(255, buf[i])));
+        return q;
+      }
+      if (mode === 'bayer' || mode === 'blue-noise') {
+        var BAYER = [0,8,2,10,12,4,14,6,3,11,1,9,15,7,13,5];
+        for (var y = 0; y < height; y++) {
+          for (var x = 0; x < width; x++) {
+            var i2 = y * width + x;
+            var v = Math.max(0, Math.min(255, buf[i2]));
+            var t = mode === 'bayer'
+              ? (BAYER[(y & 3) * 4 + (x & 3)] + 0.5) / 16
+              : (BLUE_NOISE_64[((y & 63) << 6) | (x & 63)] + 0.5) / 256;
+            var lo = 0;
+            for (var k = 2; k >= 0; k--) { if (v >= GRAY_DISP[k]) { lo = k; break; } }
+            var hi = Math.min(lo + 1, 3);
+            var frac = lo === hi ? 1 : (v - GRAY_DISP[lo]) / (GRAY_DISP[hi] - GRAY_DISP[lo]);
+            q[i2] = frac > t ? hi : lo;
+          }
+        }
+        return q;
+      }
+      if (mode === 'zhou-fang') {
+        for (var yy = 0; yy < height; yy++) {
+          var ltr = (yy & 1) === 0;
+          var d = ltr ? 1 : -1;
+          for (var xi = 0; xi < width; xi++) {
+            var xx = ltr ? xi : width - 1 - xi;
+            var ii = yy * width + xx;
+            var vv = Math.max(0, Math.min(255, buf[ii]));
+            var iidx = Math.min(255, Math.floor(vv));
+            var llo = 0;
+            for (var kk = 2; kk >= 0; kk--) { if (vv >= GRAY_DISP[kk]) { llo = kk; break; } }
+            var hhi = Math.min(llo + 1, 3);
+            var span = GRAY_DISP[hhi] - GRAY_DISP[llo] || 1;
+            var ffrac = (vv - GRAY_DISP[llo]) / span;
+            var r = Math.random();
+            var thr = 0.5 + (r % 0.5) * ZF.mod[iidx];
+            var qv = ffrac >= thr ? hhi : llo;
+            q[ii] = qv;
+            var e = vv - GRAY_DISP[qv];
+            var cBase = iidx * 3;
+            var cR = ZF.coeffs[cBase], cBL = ZF.coeffs[cBase + 1], cB = ZF.coeffs[cBase + 2];
+            if (xx + d >= 0 && xx + d < width) buf[ii + d] += e * cR;
+            if (yy + 1 < height) {
+              if (xx - d >= 0 && xx - d < width) buf[ii + width - d] += e * cBL;
+              buf[ii + width] += e * cB;
+            }
+          }
+        }
+        return q;
+      }
+      // Atkinson error-diffusion (only remaining error-diffusion mode)
+      for (var y2 = 0; y2 < height; y2++) {
+        for (var x2 = 0; x2 < width; x2++) {
+          var i3 = y2 * width + x2;
+          var v2 = Math.max(0, Math.min(255, buf[i3]));
+          var qv2 = quantize(v2);
+          q[i3] = qv2;
+          var e2 = v2 - GRAY_DISP[qv2];
+          var k1 = e2 / 8;
+          if (x2 + 1 < width) buf[i3+1] += k1;
+          if (x2 + 2 < width) buf[i3+2] += k1;
+          if (y2 + 1 < height) {
+            if (x2 > 0) buf[i3+width-1] += k1;
+            buf[i3+width] += k1;
+            if (x2 + 1 < width) buf[i3+width+1] += k1;
+          }
+          if (y2 + 2 < height) buf[i3+width*2] += k1;
+        }
+      }
+      return q;
+    }
+
+    function encodePxc(q, w, h) {
+      var bpr = Math.ceil(w / 4);
+      var buf = new Uint8Array(4 + bpr * h);
+      buf[0] = w & 0xff; buf[1] = (w >> 8) & 0xff;
+      buf[2] = h & 0xff; buf[3] = (h >> 8) & 0xff;
+      for (var row = 0; row < h; row++) {
+        for (var col = 0; col < w; col++) {
+          var pv = q[row * w + col] & 0x03;
+          buf[4 + row * bpr + (col >> 2)] |= pv << (6 - (col & 3) * 2);
+        }
+      }
+      return buf;
+    }
+
+    function encodeGrayBmp(q, w, h) {
+      var rowStride = (Math.ceil(w / 2) + 3) & ~3;
+      var headerBytes = 14 + 40;
+      var palBytes = 4 * 4;
+      var pixelOffset = headerBytes + palBytes;
+      var pixelBytes = rowStride * h;
+      var fileSize = pixelOffset + pixelBytes;
+      var buf = new Uint8Array(fileSize);
+      var view = new DataView(buf.buffer);
+      buf[0] = 0x42; buf[1] = 0x4d;
+      view.setUint32(2, fileSize, true);
+      view.setUint16(6, 0, true); view.setUint16(8, 0, true);
+      view.setUint32(10, pixelOffset, true);
+      view.setUint32(14, 40, true);
+      view.setInt32(18, w, true);
+      view.setInt32(22, -h, true);
+      view.setUint16(26, 1, true);
+      view.setUint16(28, 4, true);
+      view.setUint32(30, 0, true);
+      view.setUint32(34, pixelBytes, true);
+      view.setInt32(38, 3780, true);
+      view.setInt32(42, 3780, true);
+      view.setUint32(46, 4, true);
+      view.setUint32(50, 4, true);
+      var palOff = 54;
+      for (var ci = 0; ci < 4; ci++) {
+        var g = GRAY_DISP[ci];
+        buf[palOff + ci*4 + 0] = g;
+        buf[palOff + ci*4 + 1] = g;
+        buf[palOff + ci*4 + 2] = g;
+        buf[palOff + ci*4 + 3] = 0;
+      }
+      for (var row = 0; row < h; row++) {
+        var rowBase = pixelOffset + row * rowStride;
+        for (var col = 0; col < w; col++) {
+          var idx = q[row * w + col] & 0x0f;
+          var bIdx = rowBase + (col >> 1);
+          if ((col & 1) === 0) buf[bIdx] = idx << 4;
+          else buf[bIdx] |= idx;
+        }
+      }
+      return buf;
+    }
+
+    function computeAutoLevels(hist, totalPixels) {
+      var clip = Math.max(1, Math.round(totalPixels * 0.005));
+      var lo = 0, loCount = 0;
+      while (lo < 255 && (loCount += hist[lo]) < clip) lo++;
+      var hi = 255, hiCount = 0;
+      while (hi > 0 && (hiCount += hist[hi]) < clip) hi--;
+      if (hi - lo < 20) {
+        var mid = (lo + hi) / 2;
+        lo = Math.max(0, Math.round(mid - 10));
+        hi = Math.min(255, Math.round(mid + 10));
+      }
+      return { blackPoint: lo, whitePoint: hi };
+    }
+
+    // ====== EXIF orientation (JPEG only) ======
+    function readExifOrientation(file) {
+      return new Promise(function(resolve) {
+        if (!file || !/jpe?g$/i.test(file.name)) { resolve(1); return; }
+        var reader = new FileReader();
+        reader.onload = function(e) {
+          var view = new DataView(e.target.result);
+          if (view.getUint16(0) !== 0xFFD8) { resolve(1); return; }
+          var length = view.byteLength, offset = 2;
+          while (offset < length) {
+            var marker = view.getUint16(offset);
+            offset += 2;
+            if (marker === 0xFFE1) {
+              if (view.getUint32(offset + 2) !== 0x45786966) { resolve(1); return; }
+              var little = view.getUint16(offset + 8) === 0x4949;
+              offset += 8;
+              var tiff = offset;
+              var tags = view.getUint16(tiff + 8, little);
+              offset = tiff + 10;
+              for (var i = 0; i < tags; i++) {
+                if (view.getUint16(offset + i * 12, little) === 0x0112) {
+                  resolve(view.getUint16(offset + i * 12 + 8, little));
+                  return;
+                }
+              }
+            } else if ((marker & 0xFF00) !== 0xFF00) break;
+            else offset += view.getUint16(offset);
+          }
+          resolve(1);
+        };
+        reader.onerror = function() { resolve(1); };
+        reader.readAsArrayBuffer(file.slice(0, 65536));
+      });
+    }
+
+    // ====== State ======
+    var deviceW = 480, deviceH = 800;
+    var sourceImg = null;
+    var sourceFile = null;
+    var sourceExif = 1;
+    var state = {
+      scaleMode: 'crop',
+      position: 'mc',
+      bg: 'white',
+      rotation: 0,
+      mirrorH: false,
+      mirrorV: false,
+      blackPoint: 0,
+      whitePoint: 255,
+      gamma: 1.0,
+      contrast: 0,
+      invert: false,
+      ditherEnabled: true,
+      ditherMode: 'zhou-fang',
+      crop: null // { x, y, w, h } in source-image coords; lazily set after image load
+    };
+    var lastQuantized = null; // { q, w, h }
+    var renderPending = false;
+
+    // ====== DOM ======
+    var $ = function(id) { return document.getElementById(id); };
+    var dropZone = $('dropZone');
+    var fileInput = $('fileInput');
+    var editorSection = $('editorSection');
+    var sourceCanvas = $('sourceCanvas');
+    var sourceInfo = $('sourceInfo');
+    var previewCanvas = $('previewCanvas');
+    var posSection = $('posSection');
+    var cropBox = $('cropBox');
+    var cropDim = $('cropDim');
+
+    // ====== Status banner ======
+    var statusBanner = $('statusBanner');
+    var statusTimer = null;
+    function setStatus(msg, kind) {
+      statusBanner.textContent = msg;
+      statusBanner.className = 'pxc-banner' + (kind ? ' ' + kind : '');
+      statusBanner.hidden = false;
+      if (statusTimer) clearTimeout(statusTimer);
+      if (kind !== 'error') statusTimer = setTimeout(function() { statusBanner.hidden = true; }, 4000);
+    }
+
+    // ====== Device dimensions from /api/status ======
+    function fetchDeviceDims() {
+      fetch('/api/status').then(function(r) { return r.ok ? r.json() : null; }).then(function(j) {
+        if (j && j.screenWidth && j.screenHeight) {
+          deviceW = j.screenWidth; deviceH = j.screenHeight;
+          previewCanvas.width = deviceW;
+          previewCanvas.height = deviceH;
+          schedulePreview();
+        }
+      }).catch(function() {});
+    }
+
+    // ====== Source loading ======
+    function loadFile(file) {
+      if (!file || !file.type.startsWith('image/')) { setStatus('Unsupported file type — drop an image.', 'error'); return; }
+      sourceFile = file;
+      readExifOrientation(file).then(function(o) { sourceExif = o; });
+      var url = URL.createObjectURL(file);
+      var img = new Image();
+      img.onload = function() {
+        URL.revokeObjectURL(url);
+        sourceImg = img;
+        editorSection.hidden = false;
+        renderSource();
+        resetCrop();
+        renderCropOverlay();
+        sourceInfo.innerHTML = '<span>' + escapeHtml(file.name) + '</span><span>' + img.width + ' × ' + img.height + '</span><span>' + formatSize(file.size) + '</span>';
+        schedulePreview();
+        updateButtonsEnabled();
+      };
+      img.onerror = function() {
+        URL.revokeObjectURL(url);
+        setStatus('Could not load image.', 'error');
+      };
+      img.src = url;
+    }
+    function escapeHtml(s) { return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
+    function formatSize(n) {
+      if (n < 1024) return n + ' B';
+      if (n < 1024*1024) return (n / 1024).toFixed(1) + ' KB';
+      return (n / (1024*1024)).toFixed(2) + ' MB';
+    }
+
+    function renderSource() {
+      if (!sourceImg) return;
+      var maxW = 320, maxH = 480;
+      var ratio = Math.min(maxW / sourceImg.width, maxH / sourceImg.height, 1);
+      sourceCanvas.width = Math.round(sourceImg.width * ratio);
+      sourceCanvas.height = Math.round(sourceImg.height * ratio);
+      var ctx = sourceCanvas.getContext('2d');
+      ctx.imageSmoothingEnabled = true;
+      ctx.imageSmoothingQuality = 'high';
+      ctx.clearRect(0, 0, sourceCanvas.width, sourceCanvas.height);
+      ctx.drawImage(sourceImg, 0, 0, sourceCanvas.width, sourceCanvas.height);
+    }
+
+    function clearSource() {
+      sourceImg = null;
+      sourceFile = null;
+      sourceExif = 1;
+      state.crop = null;
+      cropBox.hidden = true;
+      cropDim.hidden = true;
+      editorSection.hidden = true;
+      sourceInfo.innerHTML = '';
+      lastQuantized = null;
+      var ctx = previewCanvas.getContext('2d');
+      ctx.clearRect(0, 0, previewCanvas.width, previewCanvas.height);
+      updateButtonsEnabled();
+    }
+
+    // ===== Crop interaction =====
+    function getCropAR() {
+      var rotated = state.rotation === 90 || state.rotation === 270;
+      return rotated ? deviceH / deviceW : deviceW / deviceH;
+    }
+    function resetCrop() {
+      if (!sourceImg) { state.crop = null; return; }
+      var ar = getCropAR();
+      var sw = sourceImg.width, sh = sourceImg.height;
+      var srcAr = sw / sh;
+      var cw, ch;
+      if (srcAr > ar) { ch = sh; cw = ch * ar; }
+      else { cw = sw; ch = cw / ar; }
+      state.crop = { x: (sw - cw) / 2, y: (sh - ch) / 2, w: cw, h: ch };
+    }
+    function clamp(v, lo, hi) { return v < lo ? lo : v > hi ? hi : v; }
+    function renderCropOverlay() {
+      if (!sourceImg || state.scaleMode !== 'crop' || !state.crop) {
+        cropBox.hidden = true;
+        cropDim.hidden = true;
+        return;
+      }
+      // Use rendered (CSS) size in case the canvas is scaled by max-width.
+      var renderedW = sourceCanvas.clientWidth || sourceCanvas.width;
+      var renderedH = sourceCanvas.clientHeight || sourceCanvas.height;
+      var scaleX = renderedW / sourceImg.width;
+      var scaleY = renderedH / sourceImg.height;
+      cropBox.hidden = false;
+      cropBox.style.left = (state.crop.x * scaleX) + 'px';
+      cropBox.style.top = (state.crop.y * scaleY) + 'px';
+      cropBox.style.width = (state.crop.w * scaleX) + 'px';
+      cropBox.style.height = (state.crop.h * scaleY) + 'px';
+      // Dim everything outside the crop using a polygon clip-path with a
+      // degenerate "bridge" that cuts the inner rectangle out of the outer.
+      cropDim.hidden = false;
+      var l = state.crop.x / sourceImg.width * 100;
+      var t = state.crop.y / sourceImg.height * 100;
+      var r = (state.crop.x + state.crop.w) / sourceImg.width * 100;
+      var b = (state.crop.y + state.crop.h) / sourceImg.height * 100;
+      cropDim.style.clipPath =
+        'polygon(0% 0%, 100% 0%, 100% 100%, 0% 100%, 0% ' + t + '%, ' +
+        l + '% ' + t + '%, ' + l + '% ' + b + '%, ' +
+        r + '% ' + b + '%, ' + r + '% ' + t + '%, 0% ' + t + '%)';
+    }
+    window.addEventListener('resize', renderCropOverlay);
+    var dragMode = null;          // 'move' | 'n'|'s'|...|'nw'|...
+    var dragInitial = null;       // captured crop at pointerdown
+    var dragStartImgX = 0, dragStartImgY = 0; // pointer pos at down, in source coords
+    function pointerToImg(ev) {
+      var rect = sourceCanvas.getBoundingClientRect();
+      var sx = (ev.clientX - rect.left) / rect.width * sourceImg.width;
+      var sy = (ev.clientY - rect.top) / rect.height * sourceImg.height;
+      return { x: sx, y: sy };
+    }
+    function beginDrag(handle, ev) {
+      if (!sourceImg || !state.crop) return;
+      dragMode = handle;
+      dragInitial = { x: state.crop.x, y: state.crop.y, w: state.crop.w, h: state.crop.h };
+      var p = pointerToImg(ev);
+      dragStartImgX = p.x; dragStartImgY = p.y;
+      try { ev.target.setPointerCapture(ev.pointerId); } catch (_) {}
+      ev.preventDefault();
+    }
+    function applyDrag(ev) {
+      if (!dragMode || !dragInitial || !sourceImg) return;
+      var p = pointerToImg(ev);
+      var dx = p.x - dragStartImgX;
+      var dy = p.y - dragStartImgY;
+      var imgW = sourceImg.width, imgH = sourceImg.height;
+      var c = dragInitial;
+      var ar = getCropAR();
+      var minSize = 20;
+      if (dragMode === 'move') {
+        var nx = clamp(c.x + dx, 0, imgW - c.w);
+        var ny = clamp(c.y + dy, 0, imgH - c.h);
+        state.crop = { x: nx, y: ny, w: c.w, h: c.h };
+        renderCropOverlay();
+        schedulePreview();
+        return;
+      }
+      var hasN = dragMode.indexOf('n') !== -1;
+      var hasS = dragMode.indexOf('s') !== -1;
+      var hasW = dragMode.indexOf('w') !== -1;
+      var hasE = dragMode.indexOf('e') !== -1;
+      // Anchor point (opposite of the dragged side)
+      var ax = hasW ? c.x + c.w : (hasE ? c.x : c.x + c.w / 2);
+      var ay = hasN ? c.y + c.h : (hasS ? c.y : c.y + c.h / 2);
+      // Desired new size from drag
+      var wantW = c.w, wantH = c.h;
+      if (hasE) wantW = c.w + dx;
+      if (hasW) wantW = c.w - dx;
+      if (hasS) wantH = c.h + dy;
+      if (hasN) wantH = c.h - dy;
+      // AR-lock: corner uses dominant axis, edges scale the orthogonal dim
+      if ((hasE || hasW) && (hasN || hasS)) {
+        var relW = Math.abs(wantW - c.w) / Math.max(c.w, 1);
+        var relH = Math.abs(wantH - c.h) / Math.max(c.h, 1);
+        if (relW >= relH) wantH = wantW / ar; else wantW = wantH * ar;
+      } else if (hasE || hasW) {
+        wantH = wantW / ar;
+      } else {
+        wantW = wantH * ar;
+      }
+      if (wantW < minSize) { wantW = minSize; wantH = minSize / ar; }
+      if (wantH < minSize) { wantH = minSize; wantW = minSize * ar; }
+      // Position from anchor
+      var nx2 = hasW ? ax - wantW : (hasE ? ax : ax - wantW / 2);
+      var ny2 = hasN ? ay - wantH : (hasS ? ay : ay - wantH / 2);
+      // Clamp into source bounds while preserving AR (best-effort, two passes)
+      function clampToBounds() {
+        if (nx2 < 0) { wantW += nx2; nx2 = 0; wantH = wantW / ar; if (hasN) ny2 = ay - wantH; else if (!hasS) ny2 = ay - wantH / 2; }
+        if (ny2 < 0) { wantH += ny2; ny2 = 0; wantW = wantH * ar; if (hasW) nx2 = ax - wantW; else if (!hasE) nx2 = ax - wantW / 2; }
+        if (nx2 + wantW > imgW) { wantW = imgW - nx2; wantH = wantW / ar; }
+        if (ny2 + wantH > imgH) { wantH = imgH - ny2; wantW = wantH * ar; }
+      }
+      clampToBounds(); clampToBounds();
+      state.crop = { x: nx2, y: ny2, w: wantW, h: wantH };
+      renderCropOverlay();
+      schedulePreview();
+    }
+    function endDrag() {
+      dragMode = null;
+      dragInitial = null;
+    }
+    // Bind pointer events: move on body, resize on each handle
+    cropBox.addEventListener('pointerdown', function(ev) {
+      if (ev.target !== cropBox) return; // handles get their own
+      beginDrag('move', ev);
+    });
+    var handles = cropBox.querySelectorAll('.pxc-crop-handle');
+    for (var hi = 0; hi < handles.length; hi++) {
+      (function(h) {
+        h.addEventListener('pointerdown', function(ev) {
+          beginDrag(h.getAttribute('data-handle'), ev);
+        });
+      })(handles[hi]);
+    }
+    document.addEventListener('pointermove', applyDrag);
+    document.addEventListener('pointerup', endDrag);
+    document.addEventListener('pointercancel', endDrag);
+
+    // ====== Pipeline ======
+    function drawToWorkCanvas(workCtx, targetW, targetH) {
+      var img = sourceImg;
+      if (!img) return;
+      // Source rect: crop region in crop mode, full image in fit mode
+      var sx, sy, sw, sh;
+      if (state.scaleMode === 'crop' && state.crop) {
+        sx = state.crop.x; sy = state.crop.y;
+        sw = state.crop.w; sh = state.crop.h;
+      } else {
+        sx = 0; sy = 0; sw = img.width; sh = img.height;
+      }
+      var totalRot = ((state.rotation % 360) + 360) % 360;
+      var rotated = totalRot === 90 || totalRot === 270;
+      var effW = rotated ? sh : sw;
+      var effH = rotated ? sw : sh;
+      var scale = state.scaleMode === 'fit'
+        ? Math.min(targetW / effW, targetH / effH)
+        : Math.max(targetW / effW, targetH / effH);
+      var drawW = sw * scale;
+      var drawH = sh * scale;
+      var dispW = effW * scale;
+      var dispH = effH * scale;
+      workCtx.fillStyle = state.bg === 'black' ? '#000' : '#fff';
+      workCtx.fillRect(0, 0, targetW, targetH);
+      var ox = 0, oy = 0;
+      if (state.scaleMode === 'fit') {
+        var leftover = { x: targetW - dispW, y: targetH - dispH };
+        var pos = state.position;
+        if (pos.indexOf('t') === 0) oy = 0;
+        else if (pos.indexOf('b') === 0) oy = leftover.y;
+        else oy = leftover.y / 2;
+        if (pos.charAt(1) === 'l') ox = 0;
+        else if (pos.charAt(1) === 'r') ox = leftover.x;
+        else ox = leftover.x / 2;
+      } else {
+        ox = (targetW - dispW) / 2;
+        oy = (targetH - dispH) / 2;
+      }
+      workCtx.save();
+      workCtx.imageSmoothingEnabled = true;
+      workCtx.imageSmoothingQuality = 'high';
+      workCtx.translate(ox + dispW / 2, oy + dispH / 2);
+      workCtx.rotate(totalRot * Math.PI / 180);
+      workCtx.scale(state.mirrorH ? -1 : 1, state.mirrorV ? -1 : 1);
+      workCtx.drawImage(img, sx, sy, sw, sh, -drawW / 2, -drawH / 2, drawW, drawH);
+      workCtx.restore();
+    }
+
+    function renderPreview() {
+      if (!sourceImg) return;
+      var w = deviceW, h = deviceH;
+      var work = document.createElement('canvas');
+      work.width = w; work.height = h;
+      var workCtx = work.getContext('2d');
+      drawToWorkCanvas(workCtx, w, h);
+      var rgba = workCtx.getImageData(0, 0, w, h).data;
+      var lum = buildLuminanceBuffer(rgba);
+      var lut = buildToneLut(state.blackPoint, state.whitePoint, state.gamma, state.contrast, state.invert);
+      applyTone(lum, lut);
+      var q = ditherToIndexedGray(lum, w, h, state.ditherEnabled, state.ditherMode);
+      lastQuantized = { q: q, w: w, h: h };
+      // Paint back to preview canvas via grayscale RGBA
+      previewCanvas.width = w;
+      previewCanvas.height = h;
+      var pCtx = previewCanvas.getContext('2d');
+      var out = pCtx.createImageData(w, h);
+      for (var i = 0, j = 0; i < q.length; i++, j += 4) {
+        var g = GRAY_DISP[q[i]];
+        out.data[j] = g; out.data[j+1] = g; out.data[j+2] = g; out.data[j+3] = 255;
+      }
+      pCtx.putImageData(out, 0, 0);
+      updateButtonsEnabled();
+    }
+
+    function schedulePreview() {
+      if (renderPending || !sourceImg) return;
+      renderPending = true;
+      requestAnimationFrame(function() {
+        renderPending = false;
+        try { renderPreview(); } catch (err) { setStatus('Render failed: ' + err.message, 'error'); }
+      });
+    }
+
+    function updateButtonsEnabled() {
+      var ready = !!lastQuantized;
+      $('uploadPxc').disabled = !ready;
+      $('uploadBmp').disabled = !ready;
+      $('downloadPxc').disabled = !ready;
+    }
+
+    // ====== Auto levels ======
+    function applyAutoLevels() {
+      if (!sourceImg) return;
+      var w = deviceW, h = deviceH;
+      var work = document.createElement('canvas');
+      work.width = w; work.height = h;
+      drawToWorkCanvas(work.getContext('2d'), w, h);
+      var rgba = work.getContext('2d').getImageData(0, 0, w, h).data;
+      var hist = new Uint32Array(256);
+      for (var i = 0; i < rgba.length; i += 4) {
+        var v = Math.round(0.299 * rgba[i] + 0.587 * rgba[i+1] + 0.114 * rgba[i+2]);
+        hist[v]++;
+      }
+      var auto = computeAutoLevels(hist, w * h);
+      state.blackPoint = auto.blackPoint;
+      state.whitePoint = auto.whitePoint;
+      $('blackSlider').value = state.blackPoint;
+      $('whiteSlider').value = state.whitePoint;
+      $('blackVal').textContent = state.blackPoint;
+      $('whiteVal').textContent = state.whitePoint;
+      schedulePreview();
+    }
+
+    // ====== UI bindings ======
+    function activatePill(group, target) {
+      group.querySelectorAll('.pxc-pill, .pxc-pos-btn').forEach(function(el) { el.classList.remove('active'); });
+      target.classList.add('active');
+    }
+
+    fileInput.addEventListener('change', function(e) {
+      var f = e.target.files && e.target.files[0];
+      if (f) loadFile(f);
+    });
+    dropZone.addEventListener('dragover', function(e) { e.preventDefault(); dropZone.classList.add('over'); });
+    dropZone.addEventListener('dragleave', function() { dropZone.classList.remove('over'); });
+    dropZone.addEventListener('drop', function(e) {
+      e.preventDefault();
+      dropZone.classList.remove('over');
+      var f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+      if (f) loadFile(f);
+    });
+    window.addEventListener('paste', function(e) {
+      var items = e.clipboardData && e.clipboardData.items;
+      if (!items) return;
+      for (var i = 0; i < items.length; i++) {
+        if (items[i].type && items[i].type.indexOf('image/') === 0) {
+          var f = items[i].getAsFile();
+          if (f) { loadFile(f); break; }
+        }
+      }
+    });
+    $('changeBtn').addEventListener('click', clearSource);
+
+    $('scaleGroup').addEventListener('click', function(e) {
+      var btn = e.target.closest('.pxc-pill');
+      if (!btn) return;
+      state.scaleMode = btn.getAttribute('data-scale');
+      activatePill($('scaleGroup'), btn);
+      posSection.classList.toggle('disabled', state.scaleMode !== 'fit');
+      if (state.scaleMode === 'crop' && sourceImg && !state.crop) resetCrop();
+      renderCropOverlay();
+      schedulePreview();
+    });
+    $('posGrid').addEventListener('click', function(e) {
+      var btn = e.target.closest('.pxc-pos-btn');
+      if (!btn) return;
+      state.position = btn.getAttribute('data-pos');
+      activatePill($('posGrid'), btn);
+      schedulePreview();
+    });
+    $('bgGroup').addEventListener('click', function(e) {
+      var btn = e.target.closest('.pxc-pill');
+      if (!btn) return;
+      state.bg = btn.getAttribute('data-bg');
+      activatePill($('bgGroup'), btn);
+      schedulePreview();
+    });
+    $('rotateCCW').addEventListener('click', function() {
+      state.rotation = (state.rotation + 270) % 360;
+      $('rotateVal').textContent = state.rotation + '°';
+      resetCrop(); renderCropOverlay();
+      schedulePreview();
+    });
+    $('rotateCW').addEventListener('click', function() {
+      state.rotation = (state.rotation + 90) % 360;
+      $('rotateVal').textContent = state.rotation + '°';
+      resetCrop(); renderCropOverlay();
+      schedulePreview();
+    });
+    $('mirrorH').addEventListener('click', function() {
+      state.mirrorH = !state.mirrorH;
+      this.classList.toggle('active', state.mirrorH);
+      schedulePreview();
+    });
+    $('mirrorV').addEventListener('click', function() {
+      state.mirrorV = !state.mirrorV;
+      this.classList.toggle('active', state.mirrorV);
+      schedulePreview();
+    });
+    function bindSlider(id, valId, parseFn, applyFn) {
+      $(id).addEventListener('input', function(e) {
+        var v = parseFn(e.target.value);
+        applyFn(v);
+        $(valId).textContent = typeof v === 'number' && (id === 'gammaSlider') ? v.toFixed(2) : (id === 'gammaSlider' ? v.toFixed(2) : String(v | 0));
+        schedulePreview();
+      });
+    }
+    bindSlider('blackSlider', 'blackVal', function(v) { return parseInt(v, 10); }, function(v) { state.blackPoint = v; });
+    bindSlider('whiteSlider', 'whiteVal', function(v) { return parseInt(v, 10); }, function(v) { state.whitePoint = v; });
+    $('gammaSlider').addEventListener('input', function(e) {
+      var pct = parseInt(e.target.value, 10);
+      state.gamma = pct / 100;
+      $('gammaVal').textContent = state.gamma.toFixed(2);
+      schedulePreview();
+    });
+    bindSlider('contrastSlider', 'contrastVal', function(v) { return parseInt(v, 10); }, function(v) { state.contrast = v; });
+    $('autoLevelsBtn').addEventListener('click', applyAutoLevels);
+    $('toneReset').addEventListener('click', function() {
+      state.blackPoint = 0; state.whitePoint = 255; state.gamma = 1.0;
+      $('blackSlider').value = 0; $('whiteSlider').value = 255; $('gammaSlider').value = 100;
+      $('blackVal').textContent = '0'; $('whiteVal').textContent = '255'; $('gammaVal').textContent = '1.00';
+      schedulePreview();
+    });
+    $('contrastReset').addEventListener('click', function() {
+      state.contrast = 0;
+      $('contrastSlider').value = 0;
+      $('contrastVal').textContent = '0';
+      schedulePreview();
+    });
+    $('invertToggle').addEventListener('change', function(e) {
+      state.invert = e.target.checked;
+      schedulePreview();
+    });
+    $('ditherToggle').addEventListener('change', function(e) {
+      state.ditherEnabled = e.target.checked;
+      schedulePreview();
+    });
+    $('ditherAlgos').addEventListener('click', function(e) {
+      var btn = e.target.closest('.pxc-pill');
+      if (!btn) return;
+      state.ditherMode = btn.getAttribute('data-dither');
+      activatePill($('ditherAlgos'), btn);
+      schedulePreview();
+    });
+
+    // ====== Upload / download ======
+    function buildOutputBytes(format) {
+      if (!lastQuantized) return null;
+      if (format === 'bmp') return encodeGrayBmp(lastQuantized.q, lastQuantized.w, lastQuantized.h);
+      return encodePxc(lastQuantized.q, lastQuantized.w, lastQuantized.h);
+    }
+    function outputBaseName(file) {
+      var name = (file && file.name) ? file.name : 'sleep';
+      return name.replace(/\.[^.]+$/, '');
+    }
+    function uploadTo(folder, format) {
+      var bytes = buildOutputBytes(format);
+      if (!bytes) return;
+      var base = outputBaseName(sourceFile);
+      var ext = format === 'bmp' ? '.bmp' : '.pxc';
+      var filename = base + ext;
+      var mime = format === 'bmp' ? 'image/bmp' : 'application/octet-stream';
+      var blob = new Blob([bytes], { type: mime });
+      var form = new FormData();
+      form.append('file', blob, filename);
+      var pct = $('uploadProgressFill');
+      var bar = $('uploadProgress');
+      bar.hidden = false;
+      pct.style.width = '0%';
+      var xhr = new XMLHttpRequest();
+      xhr.open('POST', '/upload?path=' + encodeURIComponent(folder));
+      xhr.upload.onprogress = function(ev) {
+        if (ev.lengthComputable) pct.style.width = Math.round(ev.loaded / ev.total * 100) + '%';
+      };
+      xhr.onload = function() {
+        pct.style.width = '100%';
+        if (xhr.status >= 200 && xhr.status < 300) {
+          setStatus('Uploaded ' + filename + ' (' + bytes.length + ' B) to ' + folder, 'info');
+        } else {
+          setStatus('Upload failed (' + xhr.status + '): ' + xhr.responseText, 'error');
+        }
+        setTimeout(function() { bar.hidden = true; pct.style.width = '0%'; }, 1500);
+      };
+      xhr.onerror = function() {
+        setStatus('Network error during upload.', 'error');
+        bar.hidden = true;
+      };
+      xhr.send(form);
+    }
+    $('uploadPxc').addEventListener('click', function() { uploadTo('/.sleep', 'pxc'); });
+    $('uploadBmp').addEventListener('click', function() { uploadTo('/.sleep', 'bmp'); });
+    $('downloadPxc').addEventListener('click', function() {
+      var bytes = buildOutputBytes('pxc');
+      if (!bytes) return;
+      var base = outputBaseName(sourceFile);
+      var blob = new Blob([bytes], { type: 'application/octet-stream' });
+      var url = URL.createObjectURL(blob);
+      var a = document.createElement('a');
+      a.href = url; a.download = base + '.pxc';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(function() { URL.revokeObjectURL(url); }, 5000);
+    });
+
+    fetchDeviceDims();
+  })();
+  </script>
+</body>
+</html>

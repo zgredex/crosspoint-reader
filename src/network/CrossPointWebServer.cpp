@@ -22,6 +22,7 @@
 #include "html/FontsPageHtml.generated.h"
 #include "html/HomePageHtml.generated.h"
 #include "html/SettingsPageHtml.generated.h"
+#include "html/SleepScreensPageHtml.generated.h"
 #include "html/js/jszip_minJs.generated.h"
 
 namespace {
@@ -170,6 +171,7 @@ void CrossPointWebServer::begin() {
 
   // Font management endpoints
   server->on("/fonts", HTTP_GET, [this] { handleFontsPage(); });
+  server->on("/sleep-screens", HTTP_GET, [this] { handleSleepScreensPage(); });
   server->on("/api/fonts", HTTP_GET, [this] { handleFontList(); });
   server->on("/api/fonts/upload", HTTP_POST, [this] { handleFontUpload(); }, [this] { handleFontUploadData(); });
   server->on("/api/fonts/delete", HTTP_POST, [this] { handleFontDelete(); });
@@ -1717,6 +1719,11 @@ void CrossPointWebServer::onWebSocketEvent(uint8_t num, WStype_t type, uint8_t* 
 }
 
 // --- Font management handlers ---
+
+void CrossPointWebServer::handleSleepScreensPage() const {
+  sendHtmlContent(server.get(), SleepScreensPageHtml, sizeof(SleepScreensPageHtml));
+  LOG_DBG("WEB", "Served sleep-screens page");
+}
 
 void CrossPointWebServer::handleFontsPage() const {
   sendHtmlContent(server.get(), FontsPageHtml, sizeof(FontsPageHtml));
