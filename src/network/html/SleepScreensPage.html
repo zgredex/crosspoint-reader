@@ -336,6 +336,14 @@
       .pxc-pill-group { display: flex; gap: 6px; }
       .pxc-pill-group:not(.pxc-pill-group--wrap) { flex-wrap: wrap; }
       .pxc-pill-group--wrap { flex-wrap: wrap; }
+      .pxc-pill-grid-2x2 {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 6px;
+      }
+      .pxc-pill-grid-2x2 .pxc-pill {
+        width: 100%;
+      }
       .pxc-pill {
         flex: 1 1 auto;
         background: transparent;
@@ -429,6 +437,11 @@
         cursor: pointer;
       }
       .pxc-tone-btn:hover { border-color: var(--accent-color); color: var(--accent-color); }
+      .pxc-tone-btn.active {
+        background: var(--accent-color);
+        color: #fff;
+        border-color: var(--accent-color);
+      }
 
       .pxc-toggle-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
       .pxc-toggle-label { font-size: 0.8rem; color: var(--font-color); }
@@ -789,7 +802,7 @@
                 <span class="pxc-toggle-label">Dither</span>
                 <label class="pxc-toggle"><input type="checkbox" id="ditherToggle" checked><span class="pxc-toggle-track"></span></label>
               </div>
-              <div class="pxc-pill-group pxc-pill-group--wrap" id="ditherAlgos">
+              <div class="pxc-pill-grid-2x2" id="ditherAlgos">
                 <button class="pxc-pill active" data-dither="zhou-fang">Zhou-Fang</button>
                 <button class="pxc-pill" data-dither="atk">Atkinson</button>
                 <button class="pxc-pill" data-dither="blue-noise">Blue Noise</button>
@@ -1168,39 +1181,76 @@
     }
 
     // ====== State ======
+    // The page supports two device geometries. Almost every layout or crop
+    // calculation ultimately traces back to these target dimensions.
     var DEVICES = { x3: { w: 528, h: 792 }, x4: { w: 480, h: 800 } };
     var deviceKey = 'x4';
     var deviceW = DEVICES.x4.w, deviceH = DEVICES.x4.h;
+
+    // Raw source image/file state. `sourceImg` is the decoded browser image
+    // object used for all rendering, while `sourceFile` is kept for filename
+    // and upload/download purposes.
     var sourceImg = null;
     var sourceFile = null;
     var sourceExif = 1;
+
+    // The source editor intentionally renders the image at a reduced base size
+    // and then applies a zoom multiplier in CSS. That keeps the editor fast
+    // while still allowing precise crop interaction on large images.
     var sourceBaseScale = 1;
     var sourceFitW = 0;
     var sourceFitH = 0;
+
+    // All user-adjustable conversion controls live in one plain object so the
+    // render pipeline can be treated as a pure function of source image +
+    // device geometry + current UI state.
     var state = {
+      // `crop`: crop box is the source region and we scale to cover.
+      // `fit`: entire image is preserved and positioned inside the device.
+      // `one-to-one`: crop box is used, but rendered at native scale.
       scaleMode: 'crop',
+      // 9-point anchor used by fit-like modes for placement within free space.
       position: 'mc',
+      // Background fill is only visible when the image does not cover the full
+      // output frame, e.g. in `fit` or `1:1`.
       bg: 'white',
       rotation: 0,
       mirrorH: false,
       mirrorV: false,
+      // Tone controls are applied after layout and before quantization.
       blackPoint: 0,
       whitePoint: 255,
       gamma: 1.0,
+      // When sticky auto-levels is on, moving the crop or switching modes
+      // recalculates levels from the relevant source region automatically.
+      autoLevelsSticky: false,
       contrast: 0,
       invert: false,
+      // Dither mode selection is intentionally preserved from the local sleep
+      // screens page rather than mirroring the full public PXC site matrix.
       ditherEnabled: true,
       ditherMode: 'zhou-fang',
+      // `fitSizePct` shrinks the image after fit math; `fitNoUpscale` prevents
+      // fit mode from enlarging beyond native size.
       fitSizePct: 100,
       fitNoUpscale: true,
+      // Editor zoom affects only the left-side authoring view, never output.
       editorZoom: 1,
       editorMaxZoom: 1,
+      // Crop coordinates are always stored in source-image pixel space.
       crop: null
     };
+
+    // `lastQuantized` holds the final 4-level grayscale output so uploads and
+    // downloads do not have to re-run the full pipeline on every button click.
     var lastQuantized = null;
+    // Rendering is throttled onto rAF to avoid stacking expensive redraws while
+    // the user drags sliders or moves the crop box.
     var renderPending = false;
 
     // ====== DOM ======
+    // Small helper so the rest of the script can read more like application
+    // code and less like repeated `document.getElementById(...)` boilerplate.
     var $ = function(id) { return document.getElementById(id); };
     var dropZone = $('dropZone');
     var fileInput = $('fileInput');
@@ -1229,6 +1279,8 @@
     var zoomLabel = $('zoomLabel');
 
     // ====== Status banner ======
+    // Transient status is used for upload/download feedback and validation
+    // errors so the page can stay fully self-contained without modal UI.
     var statusBanner = $('statusBanner');
     var statusTimer = null;
     function setStatus(msg, kind) {
@@ -1239,6 +1291,7 @@
       if (kind !== 'error') statusTimer = setTimeout(function() { statusBanner.hidden = true; }, 4000);
     }
 
+    // Generic math/string helpers used throughout layout and output code.
     function clamp(v, lo, hi) { return v < lo ? lo : v > hi ? hi : v; }
     function escapeHtml(s) { return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
     function formatSize(n) {
@@ -1254,6 +1307,8 @@
       previewCanvas.width = deviceW;
       previewCanvas.height = deviceH;
       activatePill($('deviceGroup'), $('deviceGroup').querySelector('[data-device="' + key + '"]'));
+      // Device changes alter aspect ratio and output resolution, so we rebuild
+      // the default crop and preview immediately.
       if (sourceImg) {
         resetCrop();
         renderCropOverlay();
@@ -1262,6 +1317,8 @@
     }
 
     function fetchDeviceDims() {
+      // Best-effort convenience: if the live device reports its dimensions,
+      // seed the page to the matching X3/X4 profile automatically.
       fetch('/api/status').then(function(r) { return r.ok ? r.json() : null; }).then(function(j) {
         if (!j || !j.screenWidth || !j.screenHeight) return;
         if (j.screenWidth === DEVICES.x3.w && j.screenHeight === DEVICES.x3.h) setDevice('x3');
@@ -1270,19 +1327,27 @@
     }
 
     function getRotatedCropDims(crop) {
+      // Width/height swap whenever the effective rotation is portrait<->landscape.
       var totalRot = ((state.rotation % 360) + 360) % 360;
       var rotated = totalRot === 90 || totalRot === 270;
       return rotated ? { w: crop.h, h: crop.w } : { w: crop.w, h: crop.h };
     }
     function getCropAR() {
+      // Crop box aspect ratio is always locked to the active device frame.
       return deviceW / deviceH;
     }
     function getOneToOneLimits() {
+      // In 1:1 mode the crop box cannot exceed the native source pixels that
+      // can be displayed without additional scaling after rotation.
       var totalRot = ((state.rotation % 360) + 360) % 360;
       var rotated = totalRot === 90 || totalRot === 270;
       return rotated ? { w: deviceH, h: deviceW } : { w: deviceW, h: deviceH };
     }
     function getMinCropDims() {
+      // Minimum crop size depends on mode:
+      // - crop mode: keep the selected region large enough to cover the device
+      // - fit + no-upscale: prevent selecting a tiny region that would need enlargement
+      // - 1:1: prevent the crop from exceeding the native displayable region
       var ar = getCropAR();
       var minW = 20;
       var minH = minW / ar;
@@ -1304,6 +1369,8 @@
     }
     function clampCropForMode(crop) {
       if (!crop) return crop;
+      // Crop resizing works by preserving the current center and then applying
+      // mode-specific min/max constraints before clamping into image bounds.
       var next = { x: crop.x, y: crop.y, w: crop.w, h: crop.h };
       var centerX = next.x + next.w / 2;
       var centerY = next.y + next.h / 2;
@@ -1327,6 +1394,8 @@
     }
     function resetCrop() {
       if (!sourceImg) { state.crop = null; return; }
+      // Default crop is the largest centered region that matches the device
+      // aspect ratio, similar to a camera app's initial framing.
       var ar = getCropAR();
       var sw = sourceImg.width, sh = sourceImg.height;
       var srcAr = sw / sh;
@@ -1336,6 +1405,8 @@
       state.crop = clampCropForMode({ x: (sw - cw) / 2, y: (sh - ch) / 2, w: cw, h: ch });
     }
     function updateSourceMeta() {
+      // The helper text explains the current mode semantics because crop and
+      // fit intentionally behave differently now.
       if (!sourceImg) {
         sourceLabel.textContent = 'Loaded image';
         sourceSubLabel.hidden = true;
@@ -1344,9 +1415,14 @@
       }
       sourceLabel.textContent = 'Source · ' + sourceImg.width + '×' + sourceImg.height;
       sourceSubLabel.hidden = false;
-      sourceSubLabel.textContent = 'Drag the crop box, resize it, or zoom in for tighter framing.';
+      sourceSubLabel.textContent = state.scaleMode === 'fit'
+        ? 'Fit uses the whole image. Switch to Crop or 1:1 if you want to trim the frame.'
+        : 'Drag the crop box, resize it, or zoom in for tighter framing.';
     }
     function updateZoomUi() {
+      // Editor zoom is derived from the base fit-to-panel size. The slider does
+      // not affect output resolution, only how much precision the user gets
+      // while manipulating the crop box.
       zoomSlider.min = '1';
       zoomSlider.max = String(Math.max(1, state.editorMaxZoom));
       zoomSlider.step = '0.01';
@@ -1371,6 +1447,9 @@
     }
     function renderSource() {
       if (!sourceImg) return;
+      // This is the authoring preview only. We downscale the raw image into a
+      // manageable canvas and then use CSS scaling for zoom, which keeps crop
+      // interactions smooth even for large photos.
       var maxW = 320;
       var maxH = 440;
       sourceBaseScale = Math.min(maxW / sourceImg.width, maxH / sourceImg.height, 1);
@@ -1390,16 +1469,35 @@
     function clearPreviewZoom() {
       zoomBox.style.display = 'none';
     }
+    function updateAutoLevelsUi() {
+      // Auto-levels is "sticky": once enabled, it keeps following crop/mode
+      // changes until the user makes a manual tone adjustment.
+      $('autoLevelsBtn').classList.toggle('active', !!state.autoLevelsSticky);
+    }
+    function disableAutoLevelsSticky() {
+      if (!state.autoLevelsSticky) return;
+      state.autoLevelsSticky = false;
+      updateAutoLevelsUi();
+    }
+    function maybeRefreshAutoLevels() {
+      if (!state.autoLevelsSticky || !sourceImg || !state.crop) return;
+      applyAutoLevels(true);
+    }
     function syncCropConstraints() {
       if (!state.crop) return;
+      // Some UI changes, like enabling "no upscale" or rotating the output,
+      // can invalidate the current crop size. This helper re-applies the mode
+      // constraints and then refreshes the derived preview state.
       state.crop = clampCropForMode(state.crop);
       renderCropOverlay();
       requestAnimationFrame(function() {
         renderCropOverlay();
+        maybeRefreshAutoLevels();
         schedulePreview();
       });
     }
     function clearSource() {
+      // Reset the page back to an unloaded state without a hard refresh.
       sourceImg = null;
       sourceFile = null;
       sourceExif = 1;
@@ -1424,6 +1522,9 @@
     }
 
     // ====== Source loading ======
+    // Loading accepts browser-supported image formats only. Once decoded, the
+    // same `sourceImg` object drives the editor preview, output pipeline, auto
+    // levels, and upload/download generation.
     function loadFile(file) {
       if (!file || !file.type.startsWith('image/')) { setStatus('Unsupported file type — drop an image.', 'error'); return; }
       sourceFile = file;
@@ -1454,8 +1555,10 @@
     }
 
     // ===== Crop interaction =====
+    // Crop geometry is stored in source-image coordinates, then projected into
+    // editor-canvas coordinates when drawing the visible overlay.
     function renderCropOverlay() {
-      if (!sourceImg || !state.crop) {
+      if (!sourceImg || !state.crop || state.scaleMode === 'fit') {
         cropBox.hidden = true;
         cropDim.hidden = true;
         snapGuideH.style.display = 'none';
@@ -1482,6 +1585,7 @@
         r + '% ' + b + '%, ' + r + '% ' + t + '%, 0% ' + t + '%)';
     }
     function updateSnapGuides(showV, showH) {
+      // Snap guides appear when the crop center is near the source image center.
       if (!sourceImg || !state.crop) {
         snapGuideH.style.display = 'none';
         snapGuideV.style.display = 'none';
@@ -1499,6 +1603,8 @@
       } else snapGuideV.style.display = 'none';
     }
     function applySnap(crop) {
+      // Keep the crop centered when the user gets near the visual midpoint so
+      // common "center this image" edits feel easy and deliberate.
       var snappedV = false, snappedH = false;
       var centerX = crop.x + crop.w / 2;
       var centerY = crop.y + crop.h / 2;
@@ -1522,13 +1628,15 @@
     var dragInitial = null;
     var dragStartImgX = 0, dragStartImgY = 0;
     function pointerToImg(ev) {
+      // Convert pointer positions from the zoomed editor back into original
+      // source pixels so all crop math stays in one consistent space.
       var rect = sourceCanvas.getBoundingClientRect();
       var sx = (ev.clientX - rect.left) / rect.width * sourceImg.width;
       var sy = (ev.clientY - rect.top) / rect.height * sourceImg.height;
       return { x: sx, y: sy };
     }
     function beginDrag(handle, ev) {
-      if (!sourceImg || !state.crop) return;
+      if (!sourceImg || !state.crop || state.scaleMode === 'fit') return;
       dragMode = handle;
       dragInitial = { x: state.crop.x, y: state.crop.y, w: state.crop.w, h: state.crop.h };
       var p = pointerToImg(ev);
@@ -1538,6 +1646,9 @@
     }
     function applyDrag(ev) {
       if (!dragMode || !dragInitial || !sourceImg) return;
+      // Resizing preserves the device aspect ratio at all times. Corner drags
+      // choose the dominant axis so the crop feels predictable instead of
+      // stretching unevenly.
       var p = pointerToImg(ev);
       var dx = p.x - dragStartImgX;
       var dy = p.y - dragStartImgY;
@@ -1548,6 +1659,7 @@
       if (dragMode === 'move') {
         state.crop = applySnap(clampCropForMode({ x: c.x + dx, y: c.y + dy, w: c.w, h: c.h }));
         renderCropOverlay();
+        maybeRefreshAutoLevels();
         schedulePreview();
         return;
       }
@@ -1573,9 +1685,11 @@
       var ny = hasN ? ay - wantH : (hasS ? ay : ay - wantH / 2);
       state.crop = applySnap(clampCropForMode({ x: nx, y: ny, w: wantW, h: wantH }));
       renderCropOverlay();
+      maybeRefreshAutoLevels();
       schedulePreview();
     }
     function endDrag() {
+      // The crop itself remains; only transient drag and snap-guide state ends.
       dragMode = null;
       dragInitial = null;
       snapGuideH.style.display = 'none';
@@ -1586,7 +1700,7 @@
       beginDrag('move', ev);
     });
     sourceCanvas.addEventListener('click', function(ev) {
-      if (!sourceImg || !state.crop || dragInitial) return;
+      if (!sourceImg || !state.crop || dragInitial || state.scaleMode === 'fit') return;
       var p = pointerToImg(ev);
       state.crop = applySnap(clampCropForMode({
         x: p.x - state.crop.w / 2,
@@ -1595,6 +1709,7 @@
         h: state.crop.h
       }));
       renderCropOverlay();
+      maybeRefreshAutoLevels();
       schedulePreview();
     });
     var handles = cropBox.querySelectorAll('.pxc-crop-handle');
@@ -1610,7 +1725,15 @@
     document.addEventListener('pointercancel', endDrag);
 
     // ====== Pipeline ======
+    // The output pipeline is:
+    // 1. Choose a source rect (crop box or whole image depending on mode)
+    // 2. Lay that rect out inside the device frame
+    // 3. Render transformed grayscale source into a work canvas
+    // 4. Apply tone adjustments
+    // 5. Quantize/dither down to the target 4-level display palette
     function computeScaleAndPlacement(sw, sh, targetW, targetH) {
+      // `crop` covers the frame, `fit` contains within the frame, and `1:1`
+      // uses native pixels with only rotation/position/background applied.
       var dims = getRotatedCropDims({ w: sw, h: sh });
       var effW = dims.w, effH = dims.h;
       var scale;
@@ -1636,9 +1759,50 @@
       }
       return { scale: scale, dispW: dispW, dispH: dispH, ox: ox, oy: oy };
     }
+    function getActiveSourceRect() {
+      // `fit` intentionally ignores the crop box and always preserves the full
+      // image. `crop` and `1:1` both use the selected crop region.
+      if (!sourceImg) return null;
+      if (state.scaleMode !== 'fit' && state.crop) {
+        return { x: state.crop.x, y: state.crop.y, w: state.crop.w, h: state.crop.h };
+      }
+      return { x: 0, y: 0, w: sourceImg.width, h: sourceImg.height };
+    }
+    function buildHistogramFromSourceRect(rect) {
+      // Auto-levels should analyze image content only, never the preview's
+      // background margins. We also downsample for speed since a histogram does
+      // not need full-resolution source data to be stable.
+      if (!sourceImg || !rect) return null;
+      var sampleMax = 512;
+      var sampleScale = Math.min(1, sampleMax / Math.max(rect.w, rect.h));
+      var sampleW = Math.max(1, Math.round(rect.w * sampleScale));
+      var sampleH = Math.max(1, Math.round(rect.h * sampleScale));
+      var work = document.createElement('canvas');
+      work.width = sampleW;
+      work.height = sampleH;
+      var ctx = work.getContext('2d');
+      ctx.imageSmoothingEnabled = true;
+      ctx.imageSmoothingQuality = 'high';
+      ctx.clearRect(0, 0, sampleW, sampleH);
+      ctx.drawImage(sourceImg, rect.x, rect.y, rect.w, rect.h, 0, 0, sampleW, sampleH);
+      var rgba = ctx.getImageData(0, 0, sampleW, sampleH).data;
+      var hist = new Uint32Array(256);
+      for (var i = 0; i < rgba.length; i += 4) {
+        var alpha = rgba[i + 3] / 255;
+        var r = Math.round(255 + (rgba[i] - 255) * alpha);
+        var g = Math.round(255 + (rgba[i + 1] - 255) * alpha);
+        var b = Math.round(255 + (rgba[i + 2] - 255) * alpha);
+        var v = Math.round(0.299 * r + 0.587 * g + 0.114 * b);
+        hist[v]++;
+      }
+      return { hist: hist, total: sampleW * sampleH };
+    }
     function drawToWorkCanvas(workCtx, targetW, targetH) {
-      if (!sourceImg || !state.crop) return;
-      var sx = state.crop.x, sy = state.crop.y, sw = state.crop.w, sh = state.crop.h;
+      // This is the "clean" pre-quantization render pass. It applies layout,
+      // rotation, mirroring, and background, but not tonal remapping or dither.
+      var rect = getActiveSourceRect();
+      if (!sourceImg || !rect) return;
+      var sx = rect.x, sy = rect.y, sw = rect.w, sh = rect.h;
       var layout = computeScaleAndPlacement(sw, sh, targetW, targetH);
       var totalRot = ((state.rotation % 360) + 360) % 360;
       var drawW = sw * layout.scale;
@@ -1656,6 +1820,8 @@
     }
     function renderPreview() {
       if (!sourceImg || !state.crop) return;
+      // The preview is generated from the same quantized buffer later used for
+      // .pxc/.bmp output so what the user sees closely matches what gets saved.
       var w = deviceW, h = deviceH;
       var work = document.createElement('canvas');
       work.width = w; work.height = h;
@@ -1679,6 +1845,8 @@
       updateButtonsEnabled();
     }
     function schedulePreview() {
+      // Rendering can be triggered by many controls in quick succession. This
+      // coalesces them to one frame.
       if (renderPending || !sourceImg || !state.crop) return;
       renderPending = true;
       requestAnimationFrame(function() {
@@ -1695,29 +1863,32 @@
     }
 
     // ====== Auto levels ======
-    function applyAutoLevels() {
-      if (!sourceImg || !state.crop) return;
-      var w = deviceW, h = deviceH;
-      var work = document.createElement('canvas');
-      work.width = w; work.height = h;
-      drawToWorkCanvas(work.getContext('2d'), w, h);
-      var rgba = work.getContext('2d').getImageData(0, 0, w, h).data;
-      var hist = new Uint32Array(256);
-      for (var i = 0; i < rgba.length; i += 4) {
-        var v = Math.round(0.299 * rgba[i] + 0.587 * rgba[i+1] + 0.114 * rgba[i+2]);
-        hist[v]++;
-      }
-      var auto = computeAutoLevels(hist, w * h);
+    // Auto-levels samples source pixels directly from the active image region:
+    // - crop / 1:1 use the crop box
+    // - fit uses the whole image
+    // Background fill never participates in the histogram.
+    function applyAutoLevels(fromSticky) {
+      if (!sourceImg) return;
+      var rect = getActiveSourceRect();
+      var sample = buildHistogramFromSourceRect(rect);
+      if (!sample) return;
+      var auto = computeAutoLevels(sample.hist, sample.total);
       state.blackPoint = auto.blackPoint;
       state.whitePoint = auto.whitePoint;
       $('blackSlider').value = state.blackPoint;
       $('whiteSlider').value = state.whitePoint;
       $('blackVal').textContent = state.blackPoint;
       $('whiteVal').textContent = state.whitePoint;
+      if (!fromSticky) {
+        state.autoLevelsSticky = true;
+        updateAutoLevelsUi();
+      }
       schedulePreview();
     }
 
     // ====== Preview loupe ======
+    // Desktop-only zoom loupe to inspect dither and quantization at a larger
+    // size without changing the actual output.
     function updatePreviewLoupe(ev) {
       if (!lastQuantized) return;
       var rect = previewCanvas.getBoundingClientRect();
@@ -1740,12 +1911,16 @@
     }
 
     // ====== UI bindings ======
+    // From here down, the page wires DOM events back into `state` changes and
+    // then schedules a preview rerender.
     function activatePill(group, target) {
       if (!group || !target) return;
       group.querySelectorAll('.pxc-pill, .pxc-pos-btn').forEach(function(el) { el.classList.remove('active'); });
       target.classList.add('active');
     }
     function updateLayoutControls() {
+      // Some controls only make sense in fit mode. The crop overlay is also
+      // refreshed here because mode changes affect whether it should be visible.
       var fitLike = state.scaleMode !== 'crop';
       posSection.classList.toggle('disabled', !fitLike);
       fitSizeRow.style.display = state.scaleMode === 'fit' ? '' : 'none';
@@ -1754,6 +1929,8 @@
       fitSizeVal.textContent = state.fitSizePct + '%';
       fitSizeSlider.value = state.fitSizePct;
       fitNoUpscaleToggle.checked = state.fitNoUpscale;
+      updateSourceMeta();
+      renderCropOverlay();
     }
 
     fileInput.addEventListener('change', function(e) {
@@ -1792,6 +1969,7 @@
       activatePill($('scaleGroup'), btn);
       state.crop = clampCropForMode(state.crop);
       updateLayoutControls();
+      maybeRefreshAutoLevels();
       renderCropOverlay();
       schedulePreview();
     });
@@ -1857,6 +2035,7 @@
     function bindSlider(id, valId, parseFn, applyFn) {
       $(id).addEventListener('input', function(e) {
         var v = parseFn(e.target.value);
+        disableAutoLevelsSticky();
         applyFn(v);
         $(valId).textContent = id === 'gammaSlider' ? v.toFixed(2) : String(v | 0);
         schedulePreview();
@@ -1866,13 +2045,15 @@
     bindSlider('whiteSlider', 'whiteVal', function(v) { return parseInt(v, 10); }, function(v) { state.whitePoint = v; });
     $('gammaSlider').addEventListener('input', function(e) {
       var pct = parseInt(e.target.value, 10);
+      disableAutoLevelsSticky();
       state.gamma = pct / 100;
       $('gammaVal').textContent = state.gamma.toFixed(2);
       schedulePreview();
     });
     bindSlider('contrastSlider', 'contrastVal', function(v) { return parseInt(v, 10); }, function(v) { state.contrast = v; });
-    $('autoLevelsBtn').addEventListener('click', applyAutoLevels);
+    $('autoLevelsBtn').addEventListener('click', function() { applyAutoLevels(false); });
     $('toneReset').addEventListener('click', function() {
+      disableAutoLevelsSticky();
       state.blackPoint = 0; state.whitePoint = 255; state.gamma = 1.0;
       $('blackSlider').value = 0; $('whiteSlider').value = 255; $('gammaSlider').value = 100;
       $('blackVal').textContent = '0'; $('whiteVal').textContent = '255'; $('gammaVal').textContent = '1.00';
@@ -1911,6 +2092,8 @@
     previewCanvas.addEventListener('mouseleave', clearPreviewZoom);
 
     // ====== Upload / download ======
+    // Uploads target the existing CrossPoint webserver endpoints, while local
+    // downloads simply wrap the already-quantized byte buffers in Blob URLs.
     function buildOutputBytes(format) {
       if (!lastQuantized) return null;
       if (format === 'bmp') return encodeGrayBmp(lastQuantized.q, lastQuantized.w, lastQuantized.h);
