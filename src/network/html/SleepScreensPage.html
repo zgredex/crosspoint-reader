@@ -91,10 +91,38 @@
         gap: 16px;
         align-items: start;
       }
-      @media (max-width: 900px) {
-        .pxc-app { grid-template-columns: 1fr; }
+      @media (min-width: 1101px) {
+        .pxc-app {
+          grid-template-columns: minmax(300px, 0.95fr) minmax(360px, 1.15fr) minmax(280px, 0.9fr);
+          gap: 20px;
+        }
       }
-      .pxc-card { margin: 0; padding: 16px; }
+      @media (max-width: 1100px) {
+        .pxc-app {
+          grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+        }
+        .pxc-app > .pxc-card:last-child {
+          grid-column: 1 / -1;
+        }
+      }
+      @media (max-width: 760px) {
+        .pxc-app { grid-template-columns: 1fr; }
+        .pxc-app > .pxc-card:last-child {
+          grid-column: auto;
+        }
+      }
+      .pxc-card {
+        margin: 0;
+        padding: 16px;
+        min-width: 0;
+        border: 1px solid color-mix(in srgb, var(--border-color) 88%, transparent);
+      }
+      @media (min-width: 1101px) {
+        .pxc-card {
+          padding: 18px;
+          border-radius: 12px;
+        }
+      }
       .pxc-section-title {
         margin: 0 0 12px;
         font-size: 0.78rem;
@@ -133,10 +161,39 @@
       /* Source preview area with crop overlay */
       .pxc-editor-section { margin-top: 14px; }
       .pxc-editor-section[hidden] { display: none; }
+      .pxc-source-sub-label {
+        margin: 0 0 10px;
+        color: var(--label-color);
+        font-size: 0.8rem;
+      }
+      .pxc-source-sub-label[hidden] { display: none; }
+      .pxc-zoom-controls {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 8px;
+      }
+      .pxc-zoom-controls-label {
+        font-size: 0.78rem;
+        color: var(--label-color);
+        min-width: 36px;
+      }
+      .pxc-zoom-slider {
+        width: 100%;
+        accent-color: var(--accent-color);
+      }
+      .pxc-zoom-hint {
+        margin: 0 0 10px;
+        color: var(--muted-color);
+        font-size: 0.74rem;
+      }
+      .pxc-zoom-hint[hidden] { display: none; }
       .pxc-source-header {
         display: flex;
         align-items: center;
         justify-content: space-between;
+        gap: 10px;
+        flex-wrap: wrap;
         margin-bottom: 8px;
       }
       .pxc-change-btn {
@@ -150,16 +207,27 @@
       }
       .pxc-change-btn:hover { color: var(--accent-color); border-color: var(--accent-color); }
       .pxc-source-frame {
-        display: flex;
-        align-items: center;
-        justify-content: center;
+        position: relative;
+        overflow: auto;
         background: var(--bg);
+        border: 1px solid var(--border-color);
         border-radius: 6px;
         padding: 8px;
         min-height: 200px;
+        max-height: 520px;
       }
-      .pxc-source-wrap { position: relative; display: inline-block; line-height: 0; user-select: none; }
-      .pxc-source-frame canvas { max-width: 100%; max-height: 420px; display: block; }
+      .pxc-source-wrap {
+        position: relative;
+        display: inline-block;
+        line-height: 0;
+        user-select: none;
+        transform-origin: top left;
+      }
+      .pxc-source-frame canvas {
+        display: block;
+        max-width: none;
+        max-height: none;
+      }
       .pxc-crop-box {
         position: absolute;
         box-sizing: border-box;
@@ -184,6 +252,15 @@
         z-index: 1;
       }
       .pxc-crop-dim[hidden] { display: none; }
+      .pxc-snap-guide {
+        position: absolute;
+        background: rgba(110, 154, 130, 0.85);
+        pointer-events: none;
+        z-index: 3;
+        display: none;
+      }
+      .pxc-snap-guide--h { height: 1px; left: 0; right: 0; }
+      .pxc-snap-guide--v { width: 1px; top: 0; bottom: 0; }
       .pxc-crop-handle {
         position: absolute;
         width: 11px;
@@ -216,6 +293,7 @@
         display: grid;
         grid-template-columns: 1fr 1fr;
         column-gap: 14px;
+        row-gap: 10px;
       }
       .pxc-settings-grid::before {
         content: '';
@@ -232,7 +310,18 @@
         padding-top: 12px;
         border-top: 1px solid var(--border-color);
       }
-      .pxc-panel-section { padding: 8px 0; }
+      .pxc-actions-block {
+        margin-top: 14px;
+        padding-top: 14px;
+        border-top: 1px solid var(--border-color);
+      }
+      @media (min-width: 1101px) {
+        .pxc-settings-card {
+          position: sticky;
+          top: 20px;
+        }
+      }
+      .pxc-panel-section { padding: 7px 0; }
       .pxc-panel-section + .pxc-panel-section { border-top: 1px solid var(--border-color); }
       .pxc-panel-section.disabled { opacity: 0.45; pointer-events: none; }
       .pxc-panel-heading {
@@ -245,6 +334,7 @@
       }
 
       .pxc-pill-group { display: flex; gap: 6px; }
+      .pxc-pill-group:not(.pxc-pill-group--wrap) { flex-wrap: wrap; }
       .pxc-pill-group--wrap { flex-wrap: wrap; }
       .pxc-pill {
         flex: 1 1 auto;
@@ -252,8 +342,8 @@
         color: var(--font-color);
         border: 1px solid var(--border-color);
         border-radius: 4px;
-        padding: 5px 8px;
-        font-size: 0.8rem;
+        padding: 4px 8px;
+        font-size: 0.78rem;
         cursor: pointer;
         transition: border-color .12s, color .12s, background .12s;
       }
@@ -308,8 +398,8 @@
         color: var(--font-color);
         border: 1px solid var(--border-color);
         border-radius: 4px;
-        padding: 5px 6px;
-        font-size: 0.9rem;
+        padding: 4px 6px;
+        font-size: 0.84rem;
         cursor: pointer;
       }
       .pxc-rotate-btn:hover, .pxc-mirror-btn:hover { border-color: var(--accent-color); color: var(--accent-color); }
@@ -322,7 +412,7 @@
         column-gap: 6px;
         row-gap: 2px;
         align-items: center;
-        margin-bottom: 6px;
+        margin-bottom: 5px;
       }
       .pxc-tone-label { font-size: 0.74rem; color: var(--label-color); grid-column: 1; }
       .pxc-tone-val { font-family: monospace; font-size: 0.74rem; color: var(--font-color); text-align: right; grid-column: 2; }
@@ -335,13 +425,13 @@
         border: 1px solid var(--border-color);
         border-radius: 4px;
         padding: 4px 8px;
-        font-size: 0.76rem;
+        font-size: 0.74rem;
         cursor: pointer;
       }
       .pxc-tone-btn:hover { border-color: var(--accent-color); color: var(--accent-color); }
 
       .pxc-toggle-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
-      .pxc-toggle-label { font-size: 0.85rem; color: var(--font-color); }
+      .pxc-toggle-label { font-size: 0.8rem; color: var(--font-color); }
       .pxc-toggle { position: relative; width: 40px; height: 22px; display: inline-block; }
       .pxc-toggle input { opacity: 0; width: 0; height: 0; }
       .pxc-toggle-track {
@@ -367,24 +457,37 @@
       .pxc-toggle input:checked + .pxc-toggle-track::before { transform: translateX(18px); }
 
       /* Preview + uploads */
+      .pxc-preview-card {
+        display: flex;
+        flex-direction: column;
+        gap: 14px;
+      }
       .pxc-preview-canvas {
         display: block;
-        width: 100%;
+        width: min(100%, 360px);
         max-width: 100%;
+        max-height: min(56vh, 520px);
         height: auto;
         margin: 0 auto;
         background: #fff;
         border-radius: 4px;
-        image-rendering: pixelated;
+        image-rendering: auto;
+        box-shadow: 0 10px 24px rgba(0, 0, 0, 0.08);
       }
-      .pxc-download-group { display: flex; flex-direction: column; gap: 6px; margin-top: 14px; }
+      .pxc-preview-card { position: relative; }
+      .pxc-download-group {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 6px;
+        margin-top: 12px;
+      }
       .pxc-upload-btn {
         background: var(--accent-color);
         color: #fff;
         border: none;
         border-radius: 4px;
-        padding: 7px 12px;
-        font-size: 0.82em;
+        padding: 7px 10px;
+        font-size: 0.78em;
         font-weight: 500;
         cursor: pointer;
         transition: background .15s, opacity .15s;
@@ -413,12 +516,109 @@
       }
       .pxc-progress-fill { height: 100%; width: 0; background: var(--accent-color); transition: width .15s; }
       .pxc-progress[hidden] { display: none; }
+      .pxc-zoom-box {
+        position: fixed;
+        display: none;
+        z-index: 20;
+        padding: 10px;
+        border-radius: 10px;
+        background: rgba(28, 33, 31, 0.94);
+        box-shadow: 0 12px 30px rgba(0, 0, 0, 0.24);
+        pointer-events: none;
+      }
+      .pxc-zoom-box canvas {
+        display: block;
+        width: 220px;
+        height: 220px;
+        background: #fff;
+        image-rendering: pixelated;
+      }
+      .pxc-zoom-box span {
+        display: block;
+        margin-top: 8px;
+        text-align: center;
+        color: #f5f5f5;
+        font-size: 0.78rem;
+      }
+
+      @media (min-width: 1101px) {
+        .pxc-settings-grid {
+          column-gap: 12px;
+          row-gap: 8px;
+        }
+        .pxc-settings-full {
+          margin-top: 4px;
+          padding-top: 10px;
+        }
+        .pxc-actions-block {
+          margin-top: 10px;
+          padding-top: 10px;
+        }
+        .pxc-preview-card {
+          position: sticky;
+          top: 20px;
+        }
+        .pxc-preview-canvas {
+          width: min(100%, 400px);
+          max-height: min(68vh, 720px);
+        }
+      }
+
+      @media (max-width: 900px) {
+        .pxc-source-frame canvas {
+          max-height: 360px;
+        }
+        .pxc-preview-canvas {
+          width: min(100%, 280px);
+          max-height: 44vh;
+        }
+      }
 
       @media (max-width: 600px) {
         body { padding: 10px; font-size: 14px; }
         .card { padding: 12px; margin: 10px 0; }
+        .pxc-source-frame {
+          min-height: 0;
+          padding: 6px;
+        }
+        .pxc-source-frame { max-height: 380px; }
+        .pxc-settings-grid {
+          grid-template-columns: 1fr;
+          row-gap: 0;
+        }
+        .pxc-settings-grid::before {
+          display: none;
+        }
+        .pxc-settings-full {
+          margin-top: 10px;
+        }
+        .pxc-actions-block {
+          margin-top: 12px;
+          padding-top: 12px;
+        }
+        .pxc-pill,
+        .pxc-tone-btn,
+        .pxc-rotate-btn,
+        .pxc-mirror-btn,
+        .pxc-upload-btn {
+          min-height: 40px;
+        }
+        .pxc-preview-canvas {
+          width: min(100%, 240px);
+          max-height: 38vh;
+        }
+        .pxc-download-group {
+          grid-template-columns: 1fr;
+        }
+        .pxc-zoom-box { display: none !important; }
         h1 { font-size: 1.3em; }
-        .nav-links a { padding: 8px 12px; font-size: 0.9em; }
+        .nav-links {
+          gap: 8px;
+        }
+        .nav-links a {
+          padding: 8px 12px;
+          font-size: 0.9em;
+        }
       }
     </style>
   </head>
@@ -453,6 +653,12 @@
             <span class="pxc-panel-heading" id="sourceLabel">Loaded image</span>
             <button class="pxc-change-btn" id="changeBtn">Clear</button>
           </div>
+          <p class="pxc-source-sub-label" id="sourceSubLabel" hidden></p>
+          <div class="pxc-zoom-controls" id="zoomControls">
+            <label class="pxc-zoom-controls-label" for="zoomSlider">Zoom</label>
+            <input id="zoomSlider" class="pxc-zoom-slider" type="range" min="1" max="1" step="0.01" value="1" aria-label="Editor zoom">
+          </div>
+          <p class="pxc-zoom-hint" id="zoomHint" hidden></p>
           <div class="pxc-source-frame">
             <div class="pxc-source-wrap">
               <canvas id="sourceCanvas"></canvas>
@@ -467,6 +673,8 @@
                 <div class="pxc-crop-handle" data-handle="sw"></div>
                 <div class="pxc-crop-handle" data-handle="se"></div>
               </div>
+              <div class="pxc-snap-guide pxc-snap-guide--h" id="snapGuideH"></div>
+              <div class="pxc-snap-guide pxc-snap-guide--v" id="snapGuideV"></div>
             </div>
           </div>
           <div class="pxc-file-info" id="sourceInfo"></div>
@@ -474,15 +682,32 @@
       </div>
 
       <!-- MIDDLE: settings (two-col with vertical divider + dither full-width below) -->
-      <div class="card pxc-card">
+      <div class="card pxc-card pxc-settings-card">
         <p class="pxc-section-title">Settings</p>
         <div class="pxc-settings-grid">
           <div class="pxc-settings-col-inner">
+            <div class="pxc-panel-section">
+              <p class="pxc-panel-heading">XTeink</p>
+              <div class="pxc-pill-group" id="deviceGroup">
+                <button class="pxc-pill" data-device="x3">X3</button>
+                <button class="pxc-pill active" data-device="x4">X4</button>
+              </div>
+            </div>
             <div class="pxc-panel-section">
               <p class="pxc-panel-heading">Scale</p>
               <div class="pxc-pill-group" id="scaleGroup">
                 <button class="pxc-pill active" data-scale="crop">Crop</button>
                 <button class="pxc-pill" data-scale="fit">Fit</button>
+                <button class="pxc-pill" data-scale="one-to-one">1:1</button>
+              </div>
+              <div class="pxc-tone-row" id="fitSizeRow" style="display:none;margin-top:8px;">
+                <span class="pxc-tone-label">Size</span>
+                <input type="range" id="fitSizeSlider" class="pxc-tone-slider" min="10" max="100" value="100" step="1">
+                <span class="pxc-tone-val" id="fitSizeVal">100%</span>
+              </div>
+              <div class="pxc-toggle-row" id="fitNoUpscaleRow" style="display:none;margin-top:8px;">
+                <span class="pxc-toggle-label">No upscale</span>
+                <label class="pxc-toggle"><input type="checkbox" id="fitNoUpscaleToggle" checked><span class="pxc-toggle-track"></span></label>
               </div>
             </div>
             <div class="pxc-panel-section disabled" id="posSection">
@@ -553,38 +778,42 @@
               <button class="pxc-tone-btn" id="contrastReset" style="width:100%;margin-top:4px;">Reset</button>
             </div>
             <div class="pxc-panel-section">
+              <p class="pxc-panel-heading">Invert</p>
               <div class="pxc-toggle-row">
                 <span class="pxc-toggle-label">Invert</span>
                 <label class="pxc-toggle"><input type="checkbox" id="invertToggle"><span class="pxc-toggle-track"></span></label>
               </div>
             </div>
+            <div class="pxc-panel-section">
+              <div class="pxc-toggle-row" style="margin-bottom:10px;">
+                <span class="pxc-toggle-label">Dither</span>
+                <label class="pxc-toggle"><input type="checkbox" id="ditherToggle" checked><span class="pxc-toggle-track"></span></label>
+              </div>
+              <div class="pxc-pill-group pxc-pill-group--wrap" id="ditherAlgos">
+                <button class="pxc-pill active" data-dither="zhou-fang">Zhou-Fang</button>
+                <button class="pxc-pill" data-dither="atk">Atkinson</button>
+                <button class="pxc-pill" data-dither="blue-noise">Blue Noise</button>
+                <button class="pxc-pill" data-dither="bayer">Bayer</button>
+              </div>
+            </div>
           </div>
         </div>
-        <div class="pxc-settings-full">
-          <div class="pxc-toggle-row" style="margin-bottom:10px;">
-            <span class="pxc-toggle-label">Dither</span>
-            <label class="pxc-toggle"><input type="checkbox" id="ditherToggle" checked><span class="pxc-toggle-track"></span></label>
+        <div class="pxc-actions-block">
+          <div class="pxc-download-group">
+            <button class="pxc-upload-btn" id="uploadPxc" disabled>Upload .pxc to /.sleep/</button>
+            <button class="pxc-upload-btn secondary" id="uploadBmp" disabled>Upload .bmp to /.sleep/</button>
+            <button class="pxc-upload-btn secondary" id="downloadPxc" disabled>Download .pxc</button>
+            <button class="pxc-upload-btn secondary" id="downloadBmp" disabled>Download .bmp</button>
           </div>
-          <div class="pxc-pill-group pxc-pill-group--wrap" id="ditherAlgos">
-            <button class="pxc-pill active" data-dither="zhou-fang">Zhou-Fang</button>
-            <button class="pxc-pill" data-dither="atk">Atkinson</button>
-            <button class="pxc-pill" data-dither="blue-noise">Blue Noise</button>
-            <button class="pxc-pill" data-dither="bayer">Bayer</button>
-          </div>
+          <div class="pxc-progress" id="uploadProgress" hidden><div class="pxc-progress-fill" id="uploadProgressFill"></div></div>
+          <p class="pxc-note">Final file uploads to /.sleep/. The device renders it on next sleep cycle.</p>
         </div>
       </div>
 
       <!-- RIGHT: preview + upload buttons -->
-      <div class="card pxc-card">
+      <div class="card pxc-card pxc-preview-card">
         <p class="pxc-section-title">Preview</p>
         <canvas id="previewCanvas" class="pxc-preview-canvas" width="480" height="800"></canvas>
-        <div class="pxc-download-group">
-          <button class="pxc-upload-btn" id="uploadPxc" disabled>Upload .pxc to /.sleep/</button>
-          <button class="pxc-upload-btn secondary" id="uploadBmp" disabled>Upload .bmp to /.sleep/</button>
-          <button class="pxc-upload-btn secondary" id="downloadPxc" disabled>Download .pxc</button>
-        </div>
-        <div class="pxc-progress" id="uploadProgress" hidden><div class="pxc-progress-fill" id="uploadProgressFill"></div></div>
-        <p class="pxc-note">Final file uploads to /.sleep/. The device renders it on next sleep cycle.</p>
       </div>
 
     </div>
@@ -939,10 +1168,15 @@
     }
 
     // ====== State ======
-    var deviceW = 480, deviceH = 800;
+    var DEVICES = { x3: { w: 528, h: 792 }, x4: { w: 480, h: 800 } };
+    var deviceKey = 'x4';
+    var deviceW = DEVICES.x4.w, deviceH = DEVICES.x4.h;
     var sourceImg = null;
     var sourceFile = null;
     var sourceExif = 1;
+    var sourceBaseScale = 1;
+    var sourceFitW = 0;
+    var sourceFitH = 0;
     var state = {
       scaleMode: 'crop',
       position: 'mc',
@@ -957,9 +1191,13 @@
       invert: false,
       ditherEnabled: true,
       ditherMode: 'zhou-fang',
-      crop: null // { x, y, w, h } in source-image coords; lazily set after image load
+      fitSizePct: 100,
+      fitNoUpscale: true,
+      editorZoom: 1,
+      editorMaxZoom: 1,
+      crop: null
     };
-    var lastQuantized = null; // { q, w, h }
+    var lastQuantized = null;
     var renderPending = false;
 
     // ====== DOM ======
@@ -967,34 +1205,222 @@
     var dropZone = $('dropZone');
     var fileInput = $('fileInput');
     var editorSection = $('editorSection');
+    var sourceFrame = editorSection.querySelector('.pxc-source-frame');
+    var sourceWrap = sourceFrame.querySelector('.pxc-source-wrap');
     var sourceCanvas = $('sourceCanvas');
     var sourceInfo = $('sourceInfo');
+    var sourceLabel = $('sourceLabel');
+    var sourceSubLabel = $('sourceSubLabel');
+    var zoomSlider = $('zoomSlider');
+    var zoomHint = $('zoomHint');
+    var snapGuideH = $('snapGuideH');
+    var snapGuideV = $('snapGuideV');
     var previewCanvas = $('previewCanvas');
     var posSection = $('posSection');
+    var fitSizeRow = $('fitSizeRow');
+    var fitSizeSlider = $('fitSizeSlider');
+    var fitSizeVal = $('fitSizeVal');
+    var fitNoUpscaleRow = $('fitNoUpscaleRow');
+    var fitNoUpscaleToggle = $('fitNoUpscaleToggle');
     var cropBox = $('cropBox');
     var cropDim = $('cropDim');
+    var zoomBox = $('zoomBox');
+    var zoomCanvas = $('zoomCanvas');
+    var zoomLabel = $('zoomLabel');
 
     // ====== Status banner ======
     var statusBanner = $('statusBanner');
     var statusTimer = null;
     function setStatus(msg, kind) {
       statusBanner.textContent = msg;
-      statusBanner.className = 'pxc-banner' + (kind ? ' ' + kind : '');
+      statusBanner.className = 'message' + (kind ? ' ' + kind : '');
       statusBanner.hidden = false;
       if (statusTimer) clearTimeout(statusTimer);
       if (kind !== 'error') statusTimer = setTimeout(function() { statusBanner.hidden = true; }, 4000);
     }
 
-    // ====== Device dimensions from /api/status ======
+    function clamp(v, lo, hi) { return v < lo ? lo : v > hi ? hi : v; }
+    function escapeHtml(s) { return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
+    function formatSize(n) {
+      if (n < 1024) return n + ' B';
+      if (n < 1024*1024) return (n / 1024).toFixed(1) + ' KB';
+      return (n / (1024*1024)).toFixed(2) + ' MB';
+    }
+    function setDevice(key) {
+      if (!DEVICES[key]) return;
+      deviceKey = key;
+      deviceW = DEVICES[key].w;
+      deviceH = DEVICES[key].h;
+      previewCanvas.width = deviceW;
+      previewCanvas.height = deviceH;
+      activatePill($('deviceGroup'), $('deviceGroup').querySelector('[data-device="' + key + '"]'));
+      if (sourceImg) {
+        resetCrop();
+        renderCropOverlay();
+        schedulePreview();
+      }
+    }
+
     function fetchDeviceDims() {
       fetch('/api/status').then(function(r) { return r.ok ? r.json() : null; }).then(function(j) {
-        if (j && j.screenWidth && j.screenHeight) {
-          deviceW = j.screenWidth; deviceH = j.screenHeight;
-          previewCanvas.width = deviceW;
-          previewCanvas.height = deviceH;
-          schedulePreview();
-        }
+        if (!j || !j.screenWidth || !j.screenHeight) return;
+        if (j.screenWidth === DEVICES.x3.w && j.screenHeight === DEVICES.x3.h) setDevice('x3');
+        else setDevice('x4');
       }).catch(function() {});
+    }
+
+    function getRotatedCropDims(crop) {
+      var totalRot = ((state.rotation % 360) + 360) % 360;
+      var rotated = totalRot === 90 || totalRot === 270;
+      return rotated ? { w: crop.h, h: crop.w } : { w: crop.w, h: crop.h };
+    }
+    function getCropAR() {
+      return deviceW / deviceH;
+    }
+    function getOneToOneLimits() {
+      var totalRot = ((state.rotation % 360) + 360) % 360;
+      var rotated = totalRot === 90 || totalRot === 270;
+      return rotated ? { w: deviceH, h: deviceW } : { w: deviceW, h: deviceH };
+    }
+    function getMinCropDims() {
+      var ar = getCropAR();
+      var minW = 20;
+      var minH = minW / ar;
+      if (state.scaleMode === 'crop' || (state.scaleMode === 'fit' && state.fitNoUpscale)) {
+        var coverW = deviceW;
+        var coverH = coverW / ar;
+        if (coverH < deviceH) {
+          coverH = deviceH;
+          coverW = coverH * ar;
+        }
+        minW = Math.max(minW, coverW);
+        minH = Math.max(minH, coverH);
+      } else if (state.scaleMode === 'one-to-one') {
+        var lim = getOneToOneLimits();
+        minW = Math.max(minW, Math.min(lim.w, sourceImg ? sourceImg.width : lim.w));
+        minH = minW / ar;
+      }
+      return { w: minW, h: minH };
+    }
+    function clampCropForMode(crop) {
+      if (!crop) return crop;
+      var next = { x: crop.x, y: crop.y, w: crop.w, h: crop.h };
+      var centerX = next.x + next.w / 2;
+      var centerY = next.y + next.h / 2;
+      var minCrop = getMinCropDims();
+      if (next.w < minCrop.w) { next.w = minCrop.w; next.h = next.w / getCropAR(); }
+      if (next.h < minCrop.h) { next.h = minCrop.h; next.w = next.h * getCropAR(); }
+      if (state.scaleMode === 'one-to-one') {
+        var lim = getOneToOneLimits();
+        if (next.w > lim.w) { next.w = lim.w; next.h = next.w / getCropAR(); }
+        if (next.h > lim.h) { next.h = lim.h; next.w = next.h * getCropAR(); }
+      }
+      if (sourceImg) {
+        if (next.w > sourceImg.width) { next.w = sourceImg.width; next.h = next.w / getCropAR(); }
+        if (next.h > sourceImg.height) { next.h = sourceImg.height; next.w = next.h * getCropAR(); }
+      }
+      next.x = centerX - next.w / 2;
+      next.y = centerY - next.h / 2;
+      next.x = clamp(next.x, 0, Math.max(0, sourceImg.width - next.w));
+      next.y = clamp(next.y, 0, Math.max(0, sourceImg.height - next.h));
+      return next;
+    }
+    function resetCrop() {
+      if (!sourceImg) { state.crop = null; return; }
+      var ar = getCropAR();
+      var sw = sourceImg.width, sh = sourceImg.height;
+      var srcAr = sw / sh;
+      var cw, ch;
+      if (srcAr > ar) { ch = sh; cw = ch * ar; }
+      else { cw = sw; ch = cw / ar; }
+      state.crop = clampCropForMode({ x: (sw - cw) / 2, y: (sh - ch) / 2, w: cw, h: ch });
+    }
+    function updateSourceMeta() {
+      if (!sourceImg) {
+        sourceLabel.textContent = 'Loaded image';
+        sourceSubLabel.hidden = true;
+        sourceSubLabel.textContent = '';
+        return;
+      }
+      sourceLabel.textContent = 'Source · ' + sourceImg.width + '×' + sourceImg.height;
+      sourceSubLabel.hidden = false;
+      sourceSubLabel.textContent = 'Drag the crop box, resize it, or zoom in for tighter framing.';
+    }
+    function updateZoomUi() {
+      zoomSlider.min = '1';
+      zoomSlider.max = String(Math.max(1, state.editorMaxZoom));
+      zoomSlider.step = '0.01';
+      zoomSlider.value = String(state.editorZoom);
+      zoomSlider.disabled = !sourceImg || state.editorMaxZoom <= 1.0001;
+      if (!sourceImg) {
+        zoomHint.hidden = true;
+        zoomHint.textContent = '';
+        return;
+      }
+      zoomHint.hidden = false;
+      if (state.editorMaxZoom <= 1.0001) zoomHint.textContent = 'Image already fits the editor at native size.';
+      else zoomHint.textContent = state.editorZoom.toFixed(state.editorZoom < 10 ? 2 : 1) + '× zoom';
+    }
+    function applyEditorZoom(value) {
+      if (!sourceImg) return;
+      state.editorZoom = clamp(value, 1, state.editorMaxZoom);
+      sourceCanvas.style.width = Math.round(sourceFitW * state.editorZoom) + 'px';
+      sourceCanvas.style.height = Math.round(sourceFitH * state.editorZoom) + 'px';
+      renderCropOverlay();
+      updateZoomUi();
+    }
+    function renderSource() {
+      if (!sourceImg) return;
+      var maxW = 320;
+      var maxH = 440;
+      sourceBaseScale = Math.min(maxW / sourceImg.width, maxH / sourceImg.height, 1);
+      sourceFitW = Math.max(1, Math.round(sourceImg.width * sourceBaseScale));
+      sourceFitH = Math.max(1, Math.round(sourceImg.height * sourceBaseScale));
+      state.editorMaxZoom = Math.max(1, 1 / sourceBaseScale);
+      state.editorZoom = Math.min(state.editorZoom || 1, state.editorMaxZoom);
+      sourceCanvas.width = sourceFitW;
+      sourceCanvas.height = sourceFitH;
+      var ctx = sourceCanvas.getContext('2d');
+      ctx.imageSmoothingEnabled = true;
+      ctx.imageSmoothingQuality = 'high';
+      ctx.clearRect(0, 0, sourceFitW, sourceFitH);
+      ctx.drawImage(sourceImg, 0, 0, sourceFitW, sourceFitH);
+      applyEditorZoom(state.editorZoom);
+    }
+    function clearPreviewZoom() {
+      zoomBox.style.display = 'none';
+    }
+    function syncCropConstraints() {
+      if (!state.crop) return;
+      state.crop = clampCropForMode(state.crop);
+      renderCropOverlay();
+      requestAnimationFrame(function() {
+        renderCropOverlay();
+        schedulePreview();
+      });
+    }
+    function clearSource() {
+      sourceImg = null;
+      sourceFile = null;
+      sourceExif = 1;
+      state.crop = null;
+      state.editorZoom = 1;
+      state.editorMaxZoom = 1;
+      cropBox.hidden = true;
+      cropDim.hidden = true;
+      snapGuideH.style.display = 'none';
+      snapGuideV.style.display = 'none';
+      dropZone.hidden = false;
+      dropZone.style.display = '';
+      editorSection.hidden = true;
+      sourceInfo.innerHTML = '';
+      updateSourceMeta();
+      updateZoomUi();
+      clearPreviewZoom();
+      lastQuantized = null;
+      var ctx = previewCanvas.getContext('2d');
+      ctx.clearRect(0, 0, previewCanvas.width, previewCanvas.height);
+      updateButtonsEnabled();
     }
 
     // ====== Source loading ======
@@ -1007,11 +1433,16 @@
       img.onload = function() {
         URL.revokeObjectURL(url);
         sourceImg = img;
+        dropZone.hidden = true;
+        dropZone.style.display = 'none';
         editorSection.hidden = false;
+        updateSourceMeta();
         renderSource();
         resetCrop();
         renderCropOverlay();
         sourceInfo.innerHTML = '<span>' + escapeHtml(file.name) + '</span><span>' + img.width + ' × ' + img.height + '</span><span>' + formatSize(file.size) + '</span>';
+        updateLayoutControls();
+        updateZoomUi();
         schedulePreview();
         updateButtonsEnabled();
       };
@@ -1021,64 +1452,16 @@
       };
       img.src = url;
     }
-    function escapeHtml(s) { return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
-    function formatSize(n) {
-      if (n < 1024) return n + ' B';
-      if (n < 1024*1024) return (n / 1024).toFixed(1) + ' KB';
-      return (n / (1024*1024)).toFixed(2) + ' MB';
-    }
-
-    function renderSource() {
-      if (!sourceImg) return;
-      var maxW = 320, maxH = 480;
-      var ratio = Math.min(maxW / sourceImg.width, maxH / sourceImg.height, 1);
-      sourceCanvas.width = Math.round(sourceImg.width * ratio);
-      sourceCanvas.height = Math.round(sourceImg.height * ratio);
-      var ctx = sourceCanvas.getContext('2d');
-      ctx.imageSmoothingEnabled = true;
-      ctx.imageSmoothingQuality = 'high';
-      ctx.clearRect(0, 0, sourceCanvas.width, sourceCanvas.height);
-      ctx.drawImage(sourceImg, 0, 0, sourceCanvas.width, sourceCanvas.height);
-    }
-
-    function clearSource() {
-      sourceImg = null;
-      sourceFile = null;
-      sourceExif = 1;
-      state.crop = null;
-      cropBox.hidden = true;
-      cropDim.hidden = true;
-      editorSection.hidden = true;
-      sourceInfo.innerHTML = '';
-      lastQuantized = null;
-      var ctx = previewCanvas.getContext('2d');
-      ctx.clearRect(0, 0, previewCanvas.width, previewCanvas.height);
-      updateButtonsEnabled();
-    }
 
     // ===== Crop interaction =====
-    function getCropAR() {
-      var rotated = state.rotation === 90 || state.rotation === 270;
-      return rotated ? deviceH / deviceW : deviceW / deviceH;
-    }
-    function resetCrop() {
-      if (!sourceImg) { state.crop = null; return; }
-      var ar = getCropAR();
-      var sw = sourceImg.width, sh = sourceImg.height;
-      var srcAr = sw / sh;
-      var cw, ch;
-      if (srcAr > ar) { ch = sh; cw = ch * ar; }
-      else { cw = sw; ch = cw / ar; }
-      state.crop = { x: (sw - cw) / 2, y: (sh - ch) / 2, w: cw, h: ch };
-    }
-    function clamp(v, lo, hi) { return v < lo ? lo : v > hi ? hi : v; }
     function renderCropOverlay() {
-      if (!sourceImg || state.scaleMode !== 'crop' || !state.crop) {
+      if (!sourceImg || !state.crop) {
         cropBox.hidden = true;
         cropDim.hidden = true;
+        snapGuideH.style.display = 'none';
+        snapGuideV.style.display = 'none';
         return;
       }
-      // Use rendered (CSS) size in case the canvas is scaled by max-width.
       var renderedW = sourceCanvas.clientWidth || sourceCanvas.width;
       var renderedH = sourceCanvas.clientHeight || sourceCanvas.height;
       var scaleX = renderedW / sourceImg.width;
@@ -1088,8 +1471,6 @@
       cropBox.style.top = (state.crop.y * scaleY) + 'px';
       cropBox.style.width = (state.crop.w * scaleX) + 'px';
       cropBox.style.height = (state.crop.h * scaleY) + 'px';
-      // Dim everything outside the crop using a polygon clip-path with a
-      // degenerate "bridge" that cuts the inner rectangle out of the outer.
       cropDim.hidden = false;
       var l = state.crop.x / sourceImg.width * 100;
       var t = state.crop.y / sourceImg.height * 100;
@@ -1100,10 +1481,46 @@
         l + '% ' + t + '%, ' + l + '% ' + b + '%, ' +
         r + '% ' + b + '%, ' + r + '% ' + t + '%, 0% ' + t + '%)';
     }
+    function updateSnapGuides(showV, showH) {
+      if (!sourceImg || !state.crop) {
+        snapGuideH.style.display = 'none';
+        snapGuideV.style.display = 'none';
+        return;
+      }
+      var renderedW = sourceCanvas.clientWidth || sourceCanvas.width;
+      var renderedH = sourceCanvas.clientHeight || sourceCanvas.height;
+      if (showH) {
+        snapGuideH.style.display = 'block';
+        snapGuideH.style.top = ((state.crop.y + state.crop.h / 2) / sourceImg.height * renderedH) + 'px';
+      } else snapGuideH.style.display = 'none';
+      if (showV) {
+        snapGuideV.style.display = 'block';
+        snapGuideV.style.left = ((state.crop.x + state.crop.w / 2) / sourceImg.width * renderedW) + 'px';
+      } else snapGuideV.style.display = 'none';
+    }
+    function applySnap(crop) {
+      var snappedV = false, snappedH = false;
+      var centerX = crop.x + crop.w / 2;
+      var centerY = crop.y + crop.h / 2;
+      var tolX = Math.max(4, sourceImg.width * 0.02);
+      var tolY = Math.max(4, sourceImg.height * 0.02);
+      if (Math.abs(centerX - sourceImg.width / 2) <= tolX) {
+        crop.x = sourceImg.width / 2 - crop.w / 2;
+        snappedV = true;
+      }
+      if (Math.abs(centerY - sourceImg.height / 2) <= tolY) {
+        crop.y = sourceImg.height / 2 - crop.h / 2;
+        snappedH = true;
+      }
+      crop.x = clamp(crop.x, 0, Math.max(0, sourceImg.width - crop.w));
+      crop.y = clamp(crop.y, 0, Math.max(0, sourceImg.height - crop.h));
+      updateSnapGuides(snappedV, snappedH);
+      return crop;
+    }
     window.addEventListener('resize', renderCropOverlay);
-    var dragMode = null;          // 'move' | 'n'|'s'|...|'nw'|...
-    var dragInitial = null;       // captured crop at pointerdown
-    var dragStartImgX = 0, dragStartImgY = 0; // pointer pos at down, in source coords
+    var dragMode = null;
+    var dragInitial = null;
+    var dragStartImgX = 0, dragStartImgY = 0;
     function pointerToImg(ev) {
       var rect = sourceCanvas.getBoundingClientRect();
       var sx = (ev.clientX - rect.left) / rect.width * sourceImg.width;
@@ -1127,11 +1544,9 @@
       var imgW = sourceImg.width, imgH = sourceImg.height;
       var c = dragInitial;
       var ar = getCropAR();
-      var minSize = 20;
+      var minCrop = getMinCropDims();
       if (dragMode === 'move') {
-        var nx = clamp(c.x + dx, 0, imgW - c.w);
-        var ny = clamp(c.y + dy, 0, imgH - c.h);
-        state.crop = { x: nx, y: ny, w: c.w, h: c.h };
+        state.crop = applySnap(clampCropForMode({ x: c.x + dx, y: c.y + dy, w: c.w, h: c.h }));
         renderCropOverlay();
         schedulePreview();
         return;
@@ -1140,50 +1555,47 @@
       var hasS = dragMode.indexOf('s') !== -1;
       var hasW = dragMode.indexOf('w') !== -1;
       var hasE = dragMode.indexOf('e') !== -1;
-      // Anchor point (opposite of the dragged side)
       var ax = hasW ? c.x + c.w : (hasE ? c.x : c.x + c.w / 2);
       var ay = hasN ? c.y + c.h : (hasS ? c.y : c.y + c.h / 2);
-      // Desired new size from drag
       var wantW = c.w, wantH = c.h;
       if (hasE) wantW = c.w + dx;
       if (hasW) wantW = c.w - dx;
       if (hasS) wantH = c.h + dy;
       if (hasN) wantH = c.h - dy;
-      // AR-lock: corner uses dominant axis, edges scale the orthogonal dim
       if ((hasE || hasW) && (hasN || hasS)) {
-        var relW = Math.abs(wantW - c.w) / Math.max(c.w, 1);
-        var relH = Math.abs(wantH - c.h) / Math.max(c.h, 1);
-        if (relW >= relH) wantH = wantW / ar; else wantW = wantH * ar;
-      } else if (hasE || hasW) {
-        wantH = wantW / ar;
-      } else {
-        wantW = wantH * ar;
-      }
-      if (wantW < minSize) { wantW = minSize; wantH = minSize / ar; }
-      if (wantH < minSize) { wantH = minSize; wantW = minSize * ar; }
-      // Position from anchor
-      var nx2 = hasW ? ax - wantW : (hasE ? ax : ax - wantW / 2);
-      var ny2 = hasN ? ay - wantH : (hasS ? ay : ay - wantH / 2);
-      // Clamp into source bounds while preserving AR (best-effort, two passes)
-      function clampToBounds() {
-        if (nx2 < 0) { wantW += nx2; nx2 = 0; wantH = wantW / ar; if (hasN) ny2 = ay - wantH; else if (!hasS) ny2 = ay - wantH / 2; }
-        if (ny2 < 0) { wantH += ny2; ny2 = 0; wantW = wantH * ar; if (hasW) nx2 = ax - wantW; else if (!hasE) nx2 = ax - wantW / 2; }
-        if (nx2 + wantW > imgW) { wantW = imgW - nx2; wantH = wantW / ar; }
-        if (ny2 + wantH > imgH) { wantH = imgH - ny2; wantW = wantH * ar; }
-      }
-      clampToBounds(); clampToBounds();
-      state.crop = { x: nx2, y: ny2, w: wantW, h: wantH };
+        if (Math.abs(wantW - c.w) >= Math.abs(wantH - c.h)) wantH = wantW / ar;
+        else wantW = wantH * ar;
+      } else if (hasE || hasW) wantH = wantW / ar;
+      else wantW = wantH * ar;
+      if (wantW < minCrop.w) { wantW = minCrop.w; wantH = wantW / ar; }
+      if (wantH < minCrop.h) { wantH = minCrop.h; wantW = wantH * ar; }
+      var nx = hasW ? ax - wantW : (hasE ? ax : ax - wantW / 2);
+      var ny = hasN ? ay - wantH : (hasS ? ay : ay - wantH / 2);
+      state.crop = applySnap(clampCropForMode({ x: nx, y: ny, w: wantW, h: wantH }));
       renderCropOverlay();
       schedulePreview();
     }
     function endDrag() {
       dragMode = null;
       dragInitial = null;
+      snapGuideH.style.display = 'none';
+      snapGuideV.style.display = 'none';
     }
-    // Bind pointer events: move on body, resize on each handle
     cropBox.addEventListener('pointerdown', function(ev) {
-      if (ev.target !== cropBox) return; // handles get their own
+      if (ev.target !== cropBox) return;
       beginDrag('move', ev);
+    });
+    sourceCanvas.addEventListener('click', function(ev) {
+      if (!sourceImg || !state.crop || dragInitial) return;
+      var p = pointerToImg(ev);
+      state.crop = applySnap(clampCropForMode({
+        x: p.x - state.crop.w / 2,
+        y: p.y - state.crop.h / 2,
+        w: state.crop.w,
+        h: state.crop.h
+      }));
+      renderCropOverlay();
+      schedulePreview();
     });
     var handles = cropBox.querySelectorAll('.pxc-crop-handle');
     for (var hi = 0; hi < handles.length; hi++) {
@@ -1198,56 +1610,52 @@
     document.addEventListener('pointercancel', endDrag);
 
     // ====== Pipeline ======
-    function drawToWorkCanvas(workCtx, targetW, targetH) {
-      var img = sourceImg;
-      if (!img) return;
-      // Source rect: crop region in crop mode, full image in fit mode
-      var sx, sy, sw, sh;
-      if (state.scaleMode === 'crop' && state.crop) {
-        sx = state.crop.x; sy = state.crop.y;
-        sw = state.crop.w; sh = state.crop.h;
-      } else {
-        sx = 0; sy = 0; sw = img.width; sh = img.height;
+    function computeScaleAndPlacement(sw, sh, targetW, targetH) {
+      var dims = getRotatedCropDims({ w: sw, h: sh });
+      var effW = dims.w, effH = dims.h;
+      var scale;
+      if (state.scaleMode === 'crop') scale = Math.max(targetW / effW, targetH / effH);
+      else if (state.scaleMode === 'one-to-one') scale = 1;
+      else {
+        scale = Math.min(targetW / effW, targetH / effH);
+        if (state.fitNoUpscale) scale = Math.min(scale, 1);
+        scale = scale * (state.fitSizePct / 100);
       }
-      var totalRot = ((state.rotation % 360) + 360) % 360;
-      var rotated = totalRot === 90 || totalRot === 270;
-      var effW = rotated ? sh : sw;
-      var effH = rotated ? sw : sh;
-      var scale = state.scaleMode === 'fit'
-        ? Math.min(targetW / effW, targetH / effH)
-        : Math.max(targetW / effW, targetH / effH);
-      var drawW = sw * scale;
-      var drawH = sh * scale;
       var dispW = effW * scale;
       var dispH = effH * scale;
-      workCtx.fillStyle = state.bg === 'black' ? '#000' : '#fff';
-      workCtx.fillRect(0, 0, targetW, targetH);
       var ox = 0, oy = 0;
-      if (state.scaleMode === 'fit') {
-        var leftover = { x: targetW - dispW, y: targetH - dispH };
-        var pos = state.position;
-        if (pos.indexOf('t') === 0) oy = 0;
-        else if (pos.indexOf('b') === 0) oy = leftover.y;
-        else oy = leftover.y / 2;
-        if (pos.charAt(1) === 'l') ox = 0;
-        else if (pos.charAt(1) === 'r') ox = leftover.x;
-        else ox = leftover.x / 2;
-      } else {
+      if (state.scaleMode === 'crop') {
         ox = (targetW - dispW) / 2;
         oy = (targetH - dispH) / 2;
+      } else {
+        var leftoverX = targetW - dispW;
+        var leftoverY = targetH - dispH;
+        var pos = state.position;
+        oy = pos.indexOf('t') === 0 ? 0 : (pos.indexOf('b') === 0 ? leftoverY : leftoverY / 2);
+        ox = pos.charAt(1) === 'l' ? 0 : (pos.charAt(1) === 'r' ? leftoverX : leftoverX / 2);
       }
+      return { scale: scale, dispW: dispW, dispH: dispH, ox: ox, oy: oy };
+    }
+    function drawToWorkCanvas(workCtx, targetW, targetH) {
+      if (!sourceImg || !state.crop) return;
+      var sx = state.crop.x, sy = state.crop.y, sw = state.crop.w, sh = state.crop.h;
+      var layout = computeScaleAndPlacement(sw, sh, targetW, targetH);
+      var totalRot = ((state.rotation % 360) + 360) % 360;
+      var drawW = sw * layout.scale;
+      var drawH = sh * layout.scale;
+      workCtx.fillStyle = state.bg === 'black' ? '#000' : '#fff';
+      workCtx.fillRect(0, 0, targetW, targetH);
       workCtx.save();
       workCtx.imageSmoothingEnabled = true;
       workCtx.imageSmoothingQuality = 'high';
-      workCtx.translate(ox + dispW / 2, oy + dispH / 2);
+      workCtx.translate(layout.ox + layout.dispW / 2, layout.oy + layout.dispH / 2);
       workCtx.rotate(totalRot * Math.PI / 180);
       workCtx.scale(state.mirrorH ? -1 : 1, state.mirrorV ? -1 : 1);
-      workCtx.drawImage(img, sx, sy, sw, sh, -drawW / 2, -drawH / 2, drawW, drawH);
+      workCtx.drawImage(sourceImg, sx, sy, sw, sh, -drawW / 2, -drawH / 2, drawW, drawH);
       workCtx.restore();
     }
-
     function renderPreview() {
-      if (!sourceImg) return;
+      if (!sourceImg || !state.crop) return;
       var w = deviceW, h = deviceH;
       var work = document.createElement('canvas');
       work.width = w; work.height = h;
@@ -1259,7 +1667,6 @@
       applyTone(lum, lut);
       var q = ditherToIndexedGray(lum, w, h, state.ditherEnabled, state.ditherMode);
       lastQuantized = { q: q, w: w, h: h };
-      // Paint back to preview canvas via grayscale RGBA
       previewCanvas.width = w;
       previewCanvas.height = h;
       var pCtx = previewCanvas.getContext('2d');
@@ -1271,26 +1678,25 @@
       pCtx.putImageData(out, 0, 0);
       updateButtonsEnabled();
     }
-
     function schedulePreview() {
-      if (renderPending || !sourceImg) return;
+      if (renderPending || !sourceImg || !state.crop) return;
       renderPending = true;
       requestAnimationFrame(function() {
         renderPending = false;
         try { renderPreview(); } catch (err) { setStatus('Render failed: ' + err.message, 'error'); }
       });
     }
-
     function updateButtonsEnabled() {
       var ready = !!lastQuantized;
       $('uploadPxc').disabled = !ready;
       $('uploadBmp').disabled = !ready;
       $('downloadPxc').disabled = !ready;
+      $('downloadBmp').disabled = !ready;
     }
 
     // ====== Auto levels ======
     function applyAutoLevels() {
-      if (!sourceImg) return;
+      if (!sourceImg || !state.crop) return;
       var w = deviceW, h = deviceH;
       var work = document.createElement('canvas');
       work.width = w; work.height = h;
@@ -1311,10 +1717,43 @@
       schedulePreview();
     }
 
+    // ====== Preview loupe ======
+    function updatePreviewLoupe(ev) {
+      if (!lastQuantized) return;
+      var rect = previewCanvas.getBoundingClientRect();
+      var px = Math.round((ev.clientX - rect.left) / rect.width * lastQuantized.w);
+      var py = Math.round((ev.clientY - rect.top) / rect.height * lastQuantized.h);
+      var sampleSize = 48;
+      var sx = clamp(px - sampleSize / 2, 0, lastQuantized.w - sampleSize);
+      var sy = clamp(py - sampleSize / 2, 0, lastQuantized.h - sampleSize);
+      var zctx = zoomCanvas.getContext('2d');
+      zctx.imageSmoothingEnabled = false;
+      zctx.clearRect(0, 0, zoomCanvas.width, zoomCanvas.height);
+      zctx.drawImage(previewCanvas, sx, sy, sampleSize, sampleSize, 0, 0, zoomCanvas.width, zoomCanvas.height);
+      zoomLabel.textContent = '4.6× zoom';
+      var left = ev.clientX - zoomCanvas.width - 32;
+      var top = ev.clientY - zoomCanvas.height / 2;
+      if (left < 12) left = ev.clientX + 24;
+      top = clamp(top, 12, window.innerHeight - zoomCanvas.height - 52);
+      zoomBox.style.left = left + 'px';
+      zoomBox.style.top = top + 'px';
+    }
+
     // ====== UI bindings ======
     function activatePill(group, target) {
+      if (!group || !target) return;
       group.querySelectorAll('.pxc-pill, .pxc-pos-btn').forEach(function(el) { el.classList.remove('active'); });
       target.classList.add('active');
+    }
+    function updateLayoutControls() {
+      var fitLike = state.scaleMode !== 'crop';
+      posSection.classList.toggle('disabled', !fitLike);
+      fitSizeRow.style.display = state.scaleMode === 'fit' ? '' : 'none';
+      fitNoUpscaleRow.style.display = state.scaleMode === 'fit' ? '' : 'none';
+      fitSizeSlider.max = '100';
+      fitSizeVal.textContent = state.fitSizePct + '%';
+      fitSizeSlider.value = state.fitSizePct;
+      fitNoUpscaleToggle.checked = state.fitNoUpscale;
     }
 
     fileInput.addEventListener('change', function(e) {
@@ -1341,13 +1780,18 @@
     });
     $('changeBtn').addEventListener('click', clearSource);
 
+    $('deviceGroup').addEventListener('click', function(e) {
+      var btn = e.target.closest('.pxc-pill');
+      if (!btn) return;
+      setDevice(btn.getAttribute('data-device'));
+    });
     $('scaleGroup').addEventListener('click', function(e) {
       var btn = e.target.closest('.pxc-pill');
       if (!btn) return;
       state.scaleMode = btn.getAttribute('data-scale');
       activatePill($('scaleGroup'), btn);
-      posSection.classList.toggle('disabled', state.scaleMode !== 'fit');
-      if (state.scaleMode === 'crop' && sourceImg && !state.crop) resetCrop();
+      state.crop = clampCropForMode(state.crop);
+      updateLayoutControls();
       renderCropOverlay();
       schedulePreview();
     });
@@ -1365,16 +1809,39 @@
       activatePill($('bgGroup'), btn);
       schedulePreview();
     });
+    fitSizeSlider.addEventListener('input', function(e) {
+      state.fitSizePct = parseInt(e.target.value, 10);
+      fitSizeVal.textContent = state.fitSizePct + '%';
+      schedulePreview();
+    });
+    fitNoUpscaleToggle.addEventListener('change', function(e) {
+      state.fitNoUpscale = e.target.checked;
+      updateLayoutControls();
+      syncCropConstraints();
+    });
+    zoomSlider.addEventListener('input', function(e) {
+      applyEditorZoom(parseFloat(e.target.value));
+    });
+    sourceFrame.addEventListener('wheel', function(e) {
+      if (!sourceImg) return;
+      e.preventDefault();
+      var nextZoom = state.editorZoom * Math.exp(-e.deltaY * 0.0015);
+      applyEditorZoom(nextZoom);
+    }, { passive: false });
     $('rotateCCW').addEventListener('click', function() {
       state.rotation = (state.rotation + 270) % 360;
       $('rotateVal').textContent = state.rotation + '°';
-      resetCrop(); renderCropOverlay();
+      state.crop = clampCropForMode(state.crop);
+      if (!state.crop) resetCrop();
+      renderCropOverlay();
       schedulePreview();
     });
     $('rotateCW').addEventListener('click', function() {
       state.rotation = (state.rotation + 90) % 360;
       $('rotateVal').textContent = state.rotation + '°';
-      resetCrop(); renderCropOverlay();
+      state.crop = clampCropForMode(state.crop);
+      if (!state.crop) resetCrop();
+      renderCropOverlay();
       schedulePreview();
     });
     $('mirrorH').addEventListener('click', function() {
@@ -1391,7 +1858,7 @@
       $(id).addEventListener('input', function(e) {
         var v = parseFn(e.target.value);
         applyFn(v);
-        $(valId).textContent = typeof v === 'number' && (id === 'gammaSlider') ? v.toFixed(2) : (id === 'gammaSlider' ? v.toFixed(2) : String(v | 0));
+        $(valId).textContent = id === 'gammaSlider' ? v.toFixed(2) : String(v | 0);
         schedulePreview();
       });
     }
@@ -1423,6 +1890,7 @@
     });
     $('ditherToggle').addEventListener('change', function(e) {
       state.ditherEnabled = e.target.checked;
+      $('ditherAlgos').style.opacity = state.ditherEnabled ? '1' : '0.45';
       schedulePreview();
     });
     $('ditherAlgos').addEventListener('click', function(e) {
@@ -1432,6 +1900,15 @@
       activatePill($('ditherAlgos'), btn);
       schedulePreview();
     });
+    previewCanvas.addEventListener('mouseenter', function() {
+      if (lastQuantized && window.innerWidth > 600) zoomBox.style.display = 'block';
+    });
+    previewCanvas.addEventListener('mousemove', function(e) {
+      if (!lastQuantized || window.innerWidth <= 600) return;
+      zoomBox.style.display = 'block';
+      updatePreviewLoupe(e);
+    });
+    previewCanvas.addEventListener('mouseleave', clearPreviewZoom);
 
     // ====== Upload / download ======
     function buildOutputBytes(format) {
@@ -1492,9 +1969,29 @@
       document.body.removeChild(a);
       setTimeout(function() { URL.revokeObjectURL(url); }, 5000);
     });
+    $('downloadBmp').addEventListener('click', function() {
+      var bytes = buildOutputBytes('bmp');
+      if (!bytes) return;
+      var base = outputBaseName(sourceFile);
+      var blob = new Blob([bytes], { type: 'image/bmp' });
+      var url = URL.createObjectURL(blob);
+      var a = document.createElement('a');
+      a.href = url; a.download = base + '.bmp';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(function() { URL.revokeObjectURL(url); }, 5000);
+    });
 
+    updateSourceMeta();
+    updateLayoutControls();
+    updateZoomUi();
     fetchDeviceDims();
   })();
   </script>
+    <div class="pxc-zoom-box" id="zoomBox">
+      <canvas id="zoomCanvas" width="220" height="220"></canvas>
+      <span id="zoomLabel">3.5× zoom</span>
+    </div>
 </body>
 </html>
