@@ -487,6 +487,24 @@
         image-rendering: auto;
         box-shadow: 0 10px 24px rgba(0, 0, 0, 0.08);
       }
+      .pxc-preview-canvas[hidden] { display: none; }
+      .pxc-preview-empty {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: min(100%, 360px);
+        max-width: 100%;
+        min-height: 280px;
+        max-height: min(56vh, 520px);
+        margin: 0 auto;
+        padding: 24px;
+        text-align: center;
+        color: var(--muted-color);
+        background: color-mix(in srgb, var(--card-bg) 80%, var(--bg));
+        border: 1px dashed var(--border-color);
+        border-radius: 8px;
+      }
+      .pxc-preview-empty[hidden] { display: none; }
       .pxc-preview-card { position: relative; }
       .pxc-download-group {
         display: grid;
@@ -826,7 +844,8 @@
       <!-- RIGHT: preview + upload buttons -->
       <div class="card pxc-card pxc-preview-card">
         <p class="pxc-section-title">Preview</p>
-        <canvas id="previewCanvas" class="pxc-preview-canvas" width="480" height="800"></canvas>
+        <div id="previewEmpty" class="pxc-preview-empty">Load an image to generate a sleep screen preview.</div>
+        <div id="previewMount"></div>
       </div>
 
     </div>
@@ -1265,7 +1284,10 @@
     var zoomHint = $('zoomHint');
     var snapGuideH = $('snapGuideH');
     var snapGuideV = $('snapGuideV');
-    var previewCanvas = $('previewCanvas');
+    var previewCard = document.querySelector('.pxc-preview-card');
+    var previewEmpty = $('previewEmpty');
+    var previewMount = $('previewMount');
+    var previewCanvas = null;
     var posSection = $('posSection');
     var fitSizeRow = $('fitSizeRow');
     var fitSizeSlider = $('fitSizeSlider');
@@ -1274,9 +1296,69 @@
     var fitNoUpscaleToggle = $('fitNoUpscaleToggle');
     var cropBox = $('cropBox');
     var cropDim = $('cropDim');
-    var zoomBox = $('zoomBox');
-    var zoomCanvas = $('zoomCanvas');
-    var zoomLabel = $('zoomLabel');
+    var zoomBox = null;
+    var zoomCanvas = null;
+    var zoomLabel = null;
+
+    function ensureZoomRefs() {
+      if (!zoomBox) zoomBox = $('zoomBox');
+      if (!zoomCanvas) zoomCanvas = $('zoomCanvas');
+      if (!zoomLabel) zoomLabel = $('zoomLabel');
+      return !!(zoomBox && zoomCanvas && zoomLabel);
+    }
+
+    function bindPreviewCanvasEvents() {
+      if (!previewCanvas) return;
+      previewCanvas.addEventListener('mouseenter', function() {
+        if (!ensureZoomRefs()) return;
+        if (lastQuantized && window.innerWidth > 600) zoomBox.style.display = 'block';
+      });
+      previewCanvas.addEventListener('mousemove', function(e) {
+        if (!ensureZoomRefs()) return;
+        if (!lastQuantized || window.innerWidth <= 600) return;
+        zoomBox.style.display = 'block';
+        updatePreviewLoupe(e);
+      });
+      previewCanvas.addEventListener('mouseleave', clearPreviewZoom);
+    }
+    function ensurePreviewCanvas() {
+      if (previewCanvas && previewCanvas.parentNode === previewMount) return previewCanvas;
+      if (!previewMount || !previewMount.parentNode) {
+        previewMount = document.createElement('div');
+        previewMount.id = 'previewMount';
+        previewCard.appendChild(previewMount);
+      }
+      previewCanvas = document.createElement('canvas');
+      previewCanvas.id = 'previewCanvas';
+      previewCanvas.className = 'pxc-preview-canvas';
+      previewCanvas.width = deviceW;
+      previewCanvas.height = deviceH;
+      previewMount.replaceChildren(previewCanvas);
+      bindPreviewCanvasEvents();
+      return previewCanvas;
+    }
+    function rebuildPreviewScaffold() {
+      previewCard.innerHTML =
+        '<p class="pxc-section-title">Preview</p>' +
+        '<div id="previewEmpty" class="pxc-preview-empty">Load an image to generate a sleep screen preview.</div>' +
+        '<div id="previewMount"></div>';
+      previewEmpty = $('previewEmpty');
+      previewMount = $('previewMount');
+      previewCanvas = null;
+    }
+    function removePreviewCanvas() {
+      if (previewMount) previewMount.innerHTML = '';
+      previewCanvas = null;
+    }
+    function ensurePreviewEmpty() {
+      if (previewEmpty && previewEmpty.parentNode === previewCard) return previewEmpty;
+      previewEmpty = document.createElement('div');
+      previewEmpty.id = 'previewEmpty';
+      previewEmpty.className = 'pxc-preview-empty';
+      previewEmpty.textContent = 'Load an image to generate a sleep screen preview.';
+      previewCard.insertBefore(previewEmpty, previewMount || null);
+      return previewEmpty;
+    }
 
     // ====== Status banner ======
     // Transient status is used for upload/download feedback and validation
@@ -1304,8 +1386,10 @@
       deviceKey = key;
       deviceW = DEVICES[key].w;
       deviceH = DEVICES[key].h;
-      previewCanvas.width = deviceW;
-      previewCanvas.height = deviceH;
+      if (previewCanvas) {
+        previewCanvas.width = deviceW;
+        previewCanvas.height = deviceH;
+      }
       activatePill($('deviceGroup'), $('deviceGroup').querySelector('[data-device="' + key + '"]'));
       // Device changes alter aspect ratio and output resolution, so we rebuild
       // the default crop and preview immediately.
@@ -1437,19 +1521,44 @@
       if (state.editorMaxZoom <= 1.0001) zoomHint.textContent = 'Image already fits the editor at native size.';
       else zoomHint.textContent = state.editorZoom.toFixed(state.editorZoom < 10 ? 2 : 1) + '× zoom';
     }
-    function applyEditorZoom(value) {
+    function applyEditorZoom(value, anchor) {
       if (!sourceImg) return;
+      var prevW = sourceCanvas.width || Math.max(1, Math.round(sourceFitW * state.editorZoom));
+      var prevH = sourceCanvas.height || Math.max(1, Math.round(sourceFitH * state.editorZoom));
       state.editorZoom = clamp(value, 1, state.editorMaxZoom);
-      sourceCanvas.style.width = Math.round(sourceFitW * state.editorZoom) + 'px';
-      sourceCanvas.style.height = Math.round(sourceFitH * state.editorZoom) + 'px';
+      // Redraw the editor canvas at the current zoom level instead of scaling
+      // a previously downsampled bitmap with CSS. That keeps the source view
+      // smooth while zooming in, up to native-image resolution.
+      var drawW = Math.max(1, Math.round(sourceFitW * state.editorZoom));
+      var drawH = Math.max(1, Math.round(sourceFitH * state.editorZoom));
+      sourceCanvas.width = drawW;
+      sourceCanvas.height = drawH;
+      sourceCanvas.style.width = drawW + 'px';
+      sourceCanvas.style.height = drawH + 'px';
+      var ctx = sourceCanvas.getContext('2d');
+      ctx.imageSmoothingEnabled = true;
+      ctx.imageSmoothingQuality = 'high';
+      ctx.clearRect(0, 0, drawW, drawH);
+      ctx.drawImage(sourceImg, 0, 0, drawW, drawH);
+      if (anchor) {
+        // Preserve the pixel under the cursor by converting the cursor position
+        // into content-space before zoom, then restoring that same content
+        // point to the same viewport position after the canvas is redrawn.
+        var ratioX = prevW > 0 ? anchor.contentX / prevW : 0;
+        var ratioY = prevH > 0 ? anchor.contentY / prevH : 0;
+        var nextScrollLeft = ratioX * drawW - anchor.frameX;
+        var nextScrollTop = ratioY * drawH - anchor.frameY;
+        sourceFrame.scrollLeft = clamp(nextScrollLeft, 0, Math.max(0, drawW - sourceFrame.clientWidth));
+        sourceFrame.scrollTop = clamp(nextScrollTop, 0, Math.max(0, drawH - sourceFrame.clientHeight));
+      }
       renderCropOverlay();
       updateZoomUi();
     }
     function renderSource() {
       if (!sourceImg) return;
-      // This is the authoring preview only. We downscale the raw image into a
-      // manageable canvas and then use CSS scaling for zoom, which keeps crop
-      // interactions smooth even for large photos.
+      // This is the authoring preview only. We start from a manageable fitted
+      // size, then redraw the canvas at each zoom level so users get a smooth
+      // source view instead of magnified low-res pixels.
       var maxW = 320;
       var maxH = 440;
       sourceBaseScale = Math.min(maxW / sourceImg.width, maxH / sourceImg.height, 1);
@@ -1457,17 +1566,27 @@
       sourceFitH = Math.max(1, Math.round(sourceImg.height * sourceBaseScale));
       state.editorMaxZoom = Math.max(1, 1 / sourceBaseScale);
       state.editorZoom = Math.min(state.editorZoom || 1, state.editorMaxZoom);
-      sourceCanvas.width = sourceFitW;
-      sourceCanvas.height = sourceFitH;
-      var ctx = sourceCanvas.getContext('2d');
-      ctx.imageSmoothingEnabled = true;
-      ctx.imageSmoothingQuality = 'high';
-      ctx.clearRect(0, 0, sourceFitW, sourceFitH);
-      ctx.drawImage(sourceImg, 0, 0, sourceFitW, sourceFitH);
       applyEditorZoom(state.editorZoom);
     }
     function clearPreviewZoom() {
+      if (!ensureZoomRefs()) return;
       zoomBox.style.display = 'none';
+    }
+    function updatePreviewVisibility() {
+      var hasPreview = !!lastQuantized;
+      if (hasPreview) {
+        ensurePreviewCanvas();
+        if (previewEmpty) {
+          previewEmpty.hidden = true;
+          previewEmpty.style.display = 'none';
+        }
+      } else {
+        ensurePreviewEmpty();
+        previewEmpty.hidden = false;
+        previewEmpty.style.display = 'flex';
+        removePreviewCanvas();
+      }
+      if (!hasPreview) clearPreviewZoom();
     }
     function updateAutoLevelsUi() {
       // Auto-levels is "sticky": once enabled, it keeps following crop/mode
@@ -1498,12 +1617,17 @@
     }
     function clearSource() {
       // Reset the page back to an unloaded state without a hard refresh.
+      renderPending = false;
       sourceImg = null;
       sourceFile = null;
       sourceExif = 1;
+      sourceBaseScale = 1;
+      sourceFitW = 0;
+      sourceFitH = 0;
       state.crop = null;
       state.editorZoom = 1;
       state.editorMaxZoom = 1;
+      state.autoLevelsSticky = false;
       cropBox.hidden = true;
       cropDim.hidden = true;
       snapGuideH.style.display = 'none';
@@ -1511,13 +1635,21 @@
       dropZone.hidden = false;
       dropZone.style.display = '';
       editorSection.hidden = true;
+      fileInput.value = '';
       sourceInfo.innerHTML = '';
+      sourceCanvas.width = 1;
+      sourceCanvas.height = 1;
+      sourceCanvas.style.width = '1px';
+      sourceCanvas.style.height = '1px';
+      sourceFrame.scrollLeft = 0;
+      sourceFrame.scrollTop = 0;
       updateSourceMeta();
       updateZoomUi();
+      updateAutoLevelsUi();
       clearPreviewZoom();
       lastQuantized = null;
-      var ctx = previewCanvas.getContext('2d');
-      ctx.clearRect(0, 0, previewCanvas.width, previewCanvas.height);
+      rebuildPreviewScaffold();
+      updatePreviewVisibility();
       updateButtonsEnabled();
     }
 
@@ -1833,15 +1965,17 @@
       applyTone(lum, lut);
       var q = ditherToIndexedGray(lum, w, h, state.ditherEnabled, state.ditherMode);
       lastQuantized = { q: q, w: w, h: h };
-      previewCanvas.width = w;
-      previewCanvas.height = h;
-      var pCtx = previewCanvas.getContext('2d');
+      var canvas = ensurePreviewCanvas();
+      canvas.width = w;
+      canvas.height = h;
+      var pCtx = canvas.getContext('2d');
       var out = pCtx.createImageData(w, h);
       for (var i = 0, j = 0; i < q.length; i++, j += 4) {
         var g = GRAY_DISP[q[i]];
         out.data[j] = g; out.data[j+1] = g; out.data[j+2] = g; out.data[j+3] = 255;
       }
       pCtx.putImageData(out, 0, 0);
+      updatePreviewVisibility();
       updateButtonsEnabled();
     }
     function schedulePreview() {
@@ -1860,6 +1994,7 @@
       $('uploadBmp').disabled = !ready;
       $('downloadPxc').disabled = !ready;
       $('downloadBmp').disabled = !ready;
+      updatePreviewVisibility();
     }
 
     // ====== Auto levels ======
@@ -1890,6 +2025,7 @@
     // Desktop-only zoom loupe to inspect dither and quantization at a larger
     // size without changing the actual output.
     function updatePreviewLoupe(ev) {
+      if (!ensureZoomRefs()) return;
       if (!lastQuantized) return;
       var rect = previewCanvas.getBoundingClientRect();
       var px = Math.round((ev.clientX - rect.left) / rect.width * lastQuantized.w);
@@ -2003,8 +2139,17 @@
     sourceFrame.addEventListener('wheel', function(e) {
       if (!sourceImg) return;
       e.preventDefault();
+      var frameRect = sourceFrame.getBoundingClientRect();
+      var frameX = e.clientX - frameRect.left;
+      var frameY = e.clientY - frameRect.top;
+      var anchor = {
+        frameX: frameX,
+        frameY: frameY,
+        contentX: sourceFrame.scrollLeft + frameX,
+        contentY: sourceFrame.scrollTop + frameY
+      };
       var nextZoom = state.editorZoom * Math.exp(-e.deltaY * 0.0015);
-      applyEditorZoom(nextZoom);
+      applyEditorZoom(nextZoom, anchor);
     }, { passive: false });
     $('rotateCCW').addEventListener('click', function() {
       state.rotation = (state.rotation + 270) % 360;
@@ -2081,16 +2226,6 @@
       activatePill($('ditherAlgos'), btn);
       schedulePreview();
     });
-    previewCanvas.addEventListener('mouseenter', function() {
-      if (lastQuantized && window.innerWidth > 600) zoomBox.style.display = 'block';
-    });
-    previewCanvas.addEventListener('mousemove', function(e) {
-      if (!lastQuantized || window.innerWidth <= 600) return;
-      zoomBox.style.display = 'block';
-      updatePreviewLoupe(e);
-    });
-    previewCanvas.addEventListener('mouseleave', clearPreviewZoom);
-
     // ====== Upload / download ======
     // Uploads target the existing CrossPoint webserver endpoints, while local
     // downloads simply wrap the already-quantized byte buffers in Blob URLs.
