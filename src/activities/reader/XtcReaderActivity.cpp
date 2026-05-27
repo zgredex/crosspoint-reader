@@ -267,8 +267,9 @@ void XtcReaderActivity::renderPage() {
       pagesSinceClean = 0;
       renderer.clearScreen();
       renderer.displayBuffer(HalDisplay::HALF_REFRESH);
-    } else if (++pagesSinceClean >= 32) {
-      // Periodic FULL_REFRESH resets DC balance; every 32 pages.
+    } else if (++pagesSinceClean >= SETTINGS.getRefreshFrequency()) {
+      // #5c: periodic FULL_REFRESH resets DC balance. Cadence now matches the user's
+      // refresh-frequency setting (stock's "fullBrushInterval") instead of a hardcoded 32.
       pagesSinceClean = 0;
       renderer.clearScreen();
       renderer.displayBuffer(HalDisplay::FULL_REFRESH);
@@ -277,6 +278,10 @@ void XtcReaderActivity::renderPage() {
     const auto xtcGrayMode = SETTINGS.xtcRenderQuality == CrossPointSettings::XTC_RENDER_QUALITY_HIGH
                                  ? GfxRenderer::GrayscaleDriveMode::FactoryQuality
                                  : GfxRenderer::GrayscaleDriveMode::FactoryFast;
+    // #5a: re-init the controller before each comic page (SOFT_RESET + booster + …),
+    // matching stock's per-image 0x42015302, so no controller/charge state carries
+    // across pages. displayXtchPlanes reloads the factory LUT immediately after.
+    renderer.reinitController();
     renderer.displayXtchPlanes(plane1, plane2, pageWidth, pageHeight,
                                &XtcReaderActivity::renderStatusBarOverlayCallback, this, xtcGrayMode);
     free(plane1);

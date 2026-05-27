@@ -50,13 +50,15 @@ EInkDisplay::RefreshMode convertRefreshMode(HalDisplay::RefreshMode mode) {
   }
 }
 
-void HalDisplay::displayBuffer(HalDisplay::RefreshMode mode, bool turnOffScreen) {
+void HalDisplay::displayBuffer(HalDisplay::RefreshMode mode, bool turnOffScreen, bool loadTemp) {
   if (gpio.deviceIsX3() && mode == RefreshMode::HALF_REFRESH) {
     einkDisplay.requestResync(1);
   }
 
-  einkDisplay.displayBuffer(convertRefreshMode(mode), turnOffScreen);
+  einkDisplay.displayBuffer(convertRefreshMode(mode), turnOffScreen, loadTemp);
 }
+
+void HalDisplay::reinitController() { einkDisplay.reinitController(); }
 
 void HalDisplay::refreshDisplay(HalDisplay::RefreshMode mode, bool turnOffScreen) {
   if (gpio.deviceIsX3() && mode == RefreshMode::HALF_REFRESH) {
@@ -74,9 +76,13 @@ void HalDisplay::copyGrayscaleBuffers(const uint8_t* lsbBuffer, const uint8_t* m
   einkDisplay.copyGrayscaleBuffers(lsbBuffer, msbBuffer);
 }
 
-void HalDisplay::copyGrayscaleLsbBuffers(const uint8_t* lsbBuffer) { einkDisplay.copyGrayscaleLsbBuffers(lsbBuffer); }
+void HalDisplay::copyGrayscaleLsbBuffers(const uint8_t* lsbBuffer, bool invert) {
+  einkDisplay.copyGrayscaleLsbBuffers(lsbBuffer, invert);
+}
 
-void HalDisplay::copyGrayscaleMsbBuffers(const uint8_t* msbBuffer) { einkDisplay.copyGrayscaleMsbBuffers(msbBuffer); }
+void HalDisplay::copyGrayscaleMsbBuffers(const uint8_t* msbBuffer, bool invert) {
+  einkDisplay.copyGrayscaleMsbBuffers(msbBuffer, invert);
+}
 
 void HalDisplay::cleanupGrayscaleBuffers(const uint8_t* bwBuffer) { einkDisplay.cleanupGrayscaleBuffers(bwBuffer); }
 
@@ -89,6 +95,8 @@ void HalDisplay::displayGrayBufferFactorySetup(const unsigned char* lut) {
 }
 
 void HalDisplay::displayGrayBufferFactoryActivate() { einkDisplay.displayGrayBufferFactoryActivate(); }
+
+void HalDisplay::displayGrayBufferFactoryActivateMode1() { einkDisplay.displayGrayBufferFactoryActivateMode1(); }
 
 void HalDisplay::displayBufferPrecondition(uint8_t color) { einkDisplay.displayBufferPrecondition(color); }
 

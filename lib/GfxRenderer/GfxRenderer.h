@@ -139,11 +139,16 @@ class GfxRenderer {
   // Screen ops
   int getScreenWidth() const;
   int getScreenHeight() const;
-  void displayBuffer(HalDisplay::RefreshMode refreshMode = HalDisplay::FAST_REFRESH) const;
+  // loadTemp (#3): XTC 1-bit page path passes true to temperature-compensate the BW
+  // partial (TEMP_LOAD bit). Default false keeps GUI/menu/EPUB refreshes unchanged.
+  void displayBuffer(HalDisplay::RefreshMode refreshMode = HalDisplay::FAST_REFRESH, bool loadTemp = false) const;
   // Stock-V5.5.9 byte-match precondition flash (black or white). Fires CTRL2=0xF7
   // (full power-cycle, rails off after) and skips SINGLE_BUFFER_MODE post-RED-sync.
   // See docs/v559-disassembly-findings.md.
   void displayBufferPrecondition(uint8_t color) const;
+  // #5a — per-page controller re-init for factory-gray image paths (XTC). Forwards
+  // to the SDK reinitController() (SOFT_RESET + booster + …). X4 only.
+  void reinitController() const;
   // EXPERIMENTAL: Windowed update - display only a rectangular region
   // void displayWindow(int x, int y, int width, int height) const;
   void invertScreen() const;
@@ -208,8 +213,10 @@ class GfxRenderer {
   // Grayscale functions
   void setRenderMode(const RenderMode mode) { this->renderMode = mode; }
   RenderMode getRenderMode() const { return renderMode; }
-  void copyGrayscaleLsbBuffers() const;
-  void copyGrayscaleMsbBuffers() const;
+  // invert: write the bit-inverse of the plane to RAM (china Mode-1 polarity,
+  // for the 0xC7 self-de-energizing factory path). Default keeps Mode-2 (0xCC).
+  void copyGrayscaleLsbBuffers(bool invert = false) const;
+  void copyGrayscaleMsbBuffers(bool invert = false) const;
   void displayGrayBuffer(const unsigned char* lut = nullptr, bool factoryMode = false) const;
   bool storeBwBuffer();    // Returns true if buffer was stored successfully
   void restoreBwBuffer();  // Restore and free the stored buffer

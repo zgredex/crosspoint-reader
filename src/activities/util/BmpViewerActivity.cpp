@@ -133,7 +133,8 @@ void BmpViewerActivity::onEnter() {
               r.fillRect(x, y, w, h, false);
               r.drawText(UI_12_FONT_ID, x + margin, y + margin - 2, msg, true, EpdFontFamily::BOLD);
             },
-            nullptr);
+            // #6: FULL_REFRESH x2 preflash (was HALF x1) — strong white clear before the gray image.
+            nullptr, HalDisplay::FULL_REFRESH, /*preFlashPasses=*/2);
         renderer.clearScreen();
         renderer.cleanupGrayscaleWithFrameBuffer();
       } else {
@@ -221,7 +222,8 @@ void BmpViewerActivity::renderGrayscaleImage() {
         r.fillRect(x, y, w, h, false);
         r.drawText(UI_12_FONT_ID, x + margin, y + margin - 2, msg, true, EpdFontFamily::BOLD);
       },
-      nullptr);
+      // #6: FULL_REFRESH x2 preflash (was HALF x1) — strong white clear before the gray image.
+      nullptr, HalDisplay::FULL_REFRESH, /*preFlashPasses=*/2);
 
   file.close();
 }

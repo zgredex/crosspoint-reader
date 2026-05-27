@@ -1155,7 +1155,7 @@ void GfxRenderer::invertScreen() const {
   }
 }
 
-void GfxRenderer::displayBuffer(const HalDisplay::RefreshMode refreshMode) const {
+void GfxRenderer::displayBuffer(const HalDisplay::RefreshMode refreshMode, const bool loadTemp) const {
   auto elapsed = millis() - start_ms;
   LOG_DBG("GFX", "Time = %lu ms from clearScreen to displayBuffer", elapsed);
   // After a factory LUT render, RED RAM still contains the grayscale MSB plane.
@@ -1164,7 +1164,9 @@ void GfxRenderer::displayBuffer(const HalDisplay::RefreshMode refreshMode) const
   const bool afterFactoryLut = displayState == DisplayState::FactoryLut;
   const auto effectiveRefreshMode =
       afterFactoryLut && refreshMode == HalDisplay::FAST_REFRESH ? HalDisplay::HALF_REFRESH : refreshMode;
-  display.displayBuffer(effectiveRefreshMode, fadingFix);
+  // loadTemp (#3): only the XTC 1-bit page path passes true → TEMP_LOAD on the BW
+  // partial. GUI/menu/EPUB callers use the default (false) so they are unchanged.
+  display.displayBuffer(effectiveRefreshMode, fadingFix, loadTemp);
   displayState = DisplayState::BW;
 }
 
@@ -1172,6 +1174,8 @@ void GfxRenderer::displayBufferPrecondition(uint8_t color) const {
   display.displayBufferPrecondition(color);
   displayState = DisplayState::BW;
 }
+
+void GfxRenderer::reinitController() const { display.reinitController(); }
 
 void GfxRenderer::displayGrayBuffer(const unsigned char* lut, const bool factoryMode) const {
   display.displayGrayBuffer(fadingFix, lut, factoryMode);
@@ -1482,9 +1486,9 @@ size_t GfxRenderer::getBufferSize() const { return frameBufferSize; }
 // unused
 // void GfxRenderer::grayscaleRevert() const { display.grayscaleRevert(); }
 
-void GfxRenderer::copyGrayscaleLsbBuffers() const { display.copyGrayscaleLsbBuffers(frameBuffer); }
+void GfxRenderer::copyGrayscaleLsbBuffers(bool invert) const { display.copyGrayscaleLsbBuffers(frameBuffer, invert); }
 
-void GfxRenderer::copyGrayscaleMsbBuffers() const { display.copyGrayscaleMsbBuffers(frameBuffer); }
+void GfxRenderer::copyGrayscaleMsbBuffers(bool invert) const { display.copyGrayscaleMsbBuffers(frameBuffer, invert); }
 
 void GfxRenderer::renderGrayscale(GrayscaleDriveMode mode, void (*renderFn)(const GfxRenderer&, const void*),
                                   const void* ctx, void (*preFlashOverlayFn)(const GfxRenderer&, const void*),
@@ -1521,6 +1525,8 @@ void GfxRenderer::renderGrayscale(GrayscaleDriveMode mode, void (*renderFn)(cons
   if (spec.factoryMode) {
     display.displayGrayBufferFactorySetup(spec.lut);
   }
+  // Verbatim planes (same polarity as 0xCC); the 0xC7 Mode-1 fire renders them
+  // identically and self-de-energizes. Differential mode is unchanged.
   copyGrayscaleLsbBuffers();
 
   clearScreen(0x00);
@@ -1544,6 +1550,9 @@ void GfxRenderer::renderGrayscale(GrayscaleDriveMode mode, void (*renderFn)(cons
   // Factory mode: differential path keeps the original combined call. Factory
   // path uses the split SDK API so the LUT load happens BEFORE RAM writes —
   // matches stock V5.5.9 SPI order. Same pattern as renderGrayscaleSinglePass.
+  // NOTE: renderer-drawn planes use the rails-on 0xCC fire (NOT the XTC Mode-1
+  // 0xC7 path) — their plane polarity is opposite the XTC file planes, so 0xC7
+  // mis-renders / mottles them. Per-page de-energize for these paths is TBD.
   if (spec.factoryMode) {
     display.displayGrayBufferFactoryActivate();
   } else {
@@ -1684,6 +1693,10 @@ void GfxRenderer::displayXtchPlanes(const uint8_t* plane1, const uint8_t* plane2
   setRenderMode(GRAY2_LSB);
   if (overlayFn) overlayFn(*this, overlayCtx);
 
+  // Verbatim planes + rails-on 0xCC — the only combination that renders our
+  // planes cleanly (correct colours, clean flat margins). De-energization is a
+  // SEPARATE 0x03 step inside displayGrayBufferFactoryActivate (china's _powerOff),
+  // never bundled into the gray fire. See that function.
   copyGrayscaleLsbBuffers();
 
   // Pass 2: plane2 (LSB) → RED RAM via copyGrayscaleMsbBuffers.
@@ -1707,6 +1720,8 @@ void GfxRenderer::displayXtchPlanes(const uint8_t* plane1, const uint8_t* plane2
     screenshotHookCtx = nullptr;
   }
 
+  // Rails-on 0xCC render + a separate 0x03 de-energize (inside the activate),
+  // so the panel drops its rails each page without mottling the margins.
   display.displayGrayBufferFactoryActivate();
   setRenderMode(BW);
 }
@@ -1727,7 +1742,7 @@ void GfxRenderer::displayXtcBwPage(const uint8_t* pageBuffer, const uint16_t pag
     }
   }
   if (overlayFn) overlayFn(*this, overlayCtx);
-  displayBuffer(refreshMode);
+  displayBuffer(refreshMode, /*loadTemp=*/true);  // #3: temp-compensate XTC 1-bit BW partials
 }
 
 void GfxRenderer::freeBwBufferChunks() {

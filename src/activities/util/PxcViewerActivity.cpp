@@ -109,8 +109,10 @@ void PxcViewerActivity::renderPxcToFramebuffer(FsFile& file, uint16_t width, uin
   const auto labels =
       mappedInput.mapLabels(tr(STR_BACK), tr(STR_SET_SLEEP_COVER), (hasPrevious ? "<" : ""), (hasNext ? ">" : ""));
   PxcCtx ctx{&file, dataOffset, width, height, labels};
+  // #6: FULL_REFRESH x2 preflash (was HALF x1) — strong white clear before the gray
+  // image, matching stock's white preflash + precondition. Avoids prior-image ghost.
   renderer.renderGrayscaleSinglePass(GfxRenderer::GrayscaleDriveMode::FactoryQuality, &pxcRenderCallback, &ctx,
-                                     &pxcLoadingOverlay, nullptr);
+                                     &pxcLoadingOverlay, nullptr, HalDisplay::FULL_REFRESH, /*preFlashPasses=*/2);
 }
 
 void PxcViewerActivity::onEnter() {

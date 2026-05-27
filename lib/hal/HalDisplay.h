@@ -33,8 +33,12 @@ class HalDisplay {
   void drawImageTransparent(const uint8_t* imageData, uint16_t x, uint16_t y, uint16_t w, uint16_t h,
                             bool fromProgmem = false) const;
 
-  void displayBuffer(RefreshMode mode = RefreshMode::FAST_REFRESH, bool turnOffScreen = false);
+  void displayBuffer(RefreshMode mode = RefreshMode::FAST_REFRESH, bool turnOffScreen = false, bool loadTemp = false);
   void refreshDisplay(RefreshMode mode = RefreshMode::FAST_REFRESH, bool turnOffScreen = false);
+
+  // #5a — per-page controller re-init (SOFT_RESET + booster + …) for factory-gray
+  // image paths (XTC). Forwards to EInkDisplay::reinitController(). X4 only.
+  void reinitController();
 
   // Power management
   void deepSleep(bool powerDownDisplay = true);
@@ -43,14 +47,17 @@ class HalDisplay {
   uint8_t* getFrameBuffer() const;
 
   void copyGrayscaleBuffers(const uint8_t* lsbBuffer, const uint8_t* msbBuffer);
-  void copyGrayscaleLsbBuffers(const uint8_t* lsbBuffer);
-  void copyGrayscaleMsbBuffers(const uint8_t* msbBuffer);
+  void copyGrayscaleLsbBuffers(const uint8_t* lsbBuffer, bool invert = false);
+  void copyGrayscaleMsbBuffers(const uint8_t* msbBuffer, bool invert = false);
   void cleanupGrayscaleBuffers(const uint8_t* bwBuffer);
 
   void displayGrayBuffer(bool turnOffScreen = false, const unsigned char* lut = nullptr, bool factoryMode = false);
   // Two-phase factory grayscale render — see EInkDisplay.h.
   void displayGrayBufferFactorySetup(const unsigned char* lut);
   void displayGrayBufferFactoryActivate();
+  // Mode-1 (0xC7) factory-gray activation — china Subsystem A, self-de-energizing.
+  // Requires bit-inverted plane writes. See EInkDisplay.h.
+  void displayGrayBufferFactoryActivateMode1();
   // Stock-V5.5.9 byte-match precondition (black/white full power-cycle flash).
   void displayBufferPrecondition(uint8_t color);
 
