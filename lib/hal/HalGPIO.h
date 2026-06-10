@@ -73,6 +73,19 @@ class HalGPIO {
   unsigned long getHeldTime() const;
   unsigned long getPowerButtonHeldTime() const;
 
+  // --- Touch seam (capability-gated; CrossPoint is button-first) ----------------
+  // EEGO A4 and other FreeInk touch panels declare touch via the active BoardConfig
+  // profile + -DFREEINK_CAP_TOUCH. This is compiled out of the button-only
+  // X3 / X4 / EEGO-MVP builds, so it cannot affect them. When EEGO's touch controller
+  // + pins are recovered (set EEGO_A4.touch + FREEINK_CAP_TOUCH), MappedInputManager
+  // translates a tap into a logical Button (e.g. a top-left tap -> Button::Back) via
+  // a wrapper over FreeInk's InputManager touch API.
+#if defined(FREEINK_CAP_TOUCH) && FREEINK_CAP_TOUCH && CROSSPOINT_EMULATED == 0
+  bool hasTouch() const { return inputMgr.hasTouch(); }
+  // TODO(bin): bool wasTouchTap(uint16_t& x, uint16_t& y) — wrap
+  // inputMgr.wasTouchPressed() + inputMgr.getTouchPoint() once the panel is known.
+#endif
+
   // Setup wake up GPIO and enter deep sleep
   void startDeepSleep();
 
