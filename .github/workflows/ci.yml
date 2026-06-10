@@ -93,7 +93,7 @@ jobs:
       - name: Build CrossPoint
         run: |
           set -euo pipefail
-          pio run | tee pio.log
+          pio run -e default -e eego_a4 | tee pio.log
 
       - name: Extract firmware stats
 
