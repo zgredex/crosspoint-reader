@@ -1,3 +1,4 @@
+#include <BoardConfig.h>
 #include <HalDisplay.h>
 #include <HalGPIO.h>
 
@@ -6,7 +7,9 @@ HalDisplay display;
 
 #define SD_SPI_MISO 7
 
-HalDisplay::HalDisplay() : einkDisplay(EPD_SCLK, EPD_MOSI, EPD_CS, EPD_DC, EPD_RST, EPD_BUSY) {}
+HalDisplay::HalDisplay()
+    : einkDisplay(BoardConfig::ACTIVE.display.sclk, BoardConfig::ACTIVE.display.mosi, BoardConfig::ACTIVE.display.cs,
+                  BoardConfig::ACTIVE.display.dc, BoardConfig::ACTIVE.display.rst, BoardConfig::ACTIVE.display.busy) {}
 
 HalDisplay::~HalDisplay() {}
 

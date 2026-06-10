@@ -1,3 +1,4 @@
+#include <BoardConfig.h>
 #include <HalGPIO.h>
 #include <Logging.h>
 #include <Preferences.h>
@@ -192,6 +193,16 @@ HalGPIO::DeviceType detectDeviceTypeWithFingerprint() {
 
 void HalGPIO::begin() {
   inputMgr.begin();
+
+#if FREEINK_DEVICE_EEGO
+  // EEGO A4 (ESP32-S3): the device is compile-time selected in FreeInk's BoardConfig
+  // (ACTIVE = EEGO_A4 — not X4), so skip the C3 X3/X4 I2C fingerprint (it probes
+  // C3-specific pins). The display SPI bus is brought up by the FreeInk facade from
+  // BoardConfig pins.
+  _deviceType = DeviceType::EegoA4;
+  return;
+#endif
+
   SPI.begin(EPD_SCLK, SPI_MISO, EPD_MOSI, EPD_CS);
 
   _deviceType = detectDeviceTypeWithFingerprint();
@@ -232,12 +243,23 @@ void HalGPIO::startDeepSleep() {
     inputMgr.update();
   }
   // Arm the wakeup trigger *after* the button is released
+#if SOC_PM_SUPPORT_EXT1_WAKEUP
+  // Xtensa (S3 / classic ESP32): GPIO deep-sleep wake is via RTC ext1.
+  esp_sleep_enable_ext1_wakeup(1ULL << InputManager::POWER_BUTTON_PIN, ESP_EXT1_WAKEUP_ALL_LOW);
+#else
+  // RISC-V (C3): direct GPIO deep-sleep wakeup source.
   esp_deep_sleep_enable_gpio_wakeup(1ULL << InputManager::POWER_BUTTON_PIN, ESP_GPIO_WAKEUP_GPIO_LOW);
+#endif
   // Enter Deep Sleep
   esp_deep_sleep_start();
 }
 
 void HalGPIO::verifyPowerButtonWakeup(uint16_t requiredDurationMs, bool shortPressAllowed) {
+  if (BoardConfig::ACTIVE.input.power < 0) {
+    // No readable power-button GPIO on this board (e.g. EEGO A4 until the bin): can't
+    // verify a hold, so just boot instead of risking a sleep loop.
+    return;
+  }
   if (shortPressAllowed) {
     // Fast path - no duration check needed
     return;
@@ -270,6 +292,10 @@ void HalGPIO::verifyPowerButtonWakeup(uint16_t requiredDurationMs, bool shortPre
 }
 
 bool HalGPIO::isUsbConnected() const {
+  if (BoardConfig::ACTIVE.usbDetect < 0) {
+    // No USB-detect GPIO on this board (e.g. EEGO A4 / S3 native USB).
+    return false;
+  }
   if (deviceIsX3()) {
     // X3: infer USB/charging via BQ27220 Current() register (0x0C, signed mA).
     // Positive current means charging.
